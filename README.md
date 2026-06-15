@@ -36,8 +36,7 @@ Trong game Stickman Battle, các thuật toán trí tuệ nhân tạo được s
 2. **Greedy Best-First Search**Sử dụng heuristic Manhattan để đi nhanh về đích, hiệu quả trong tìm đường với chi phí thấp.
 3. **Hill Climbing Step**Tính bước di chuyển tiếp theo dựa trên giảm thiểu khoảng cách đến đích, đơn giản và nhanh gọn.
 4. **Backtracking Pathfinding**Tìm đường đi bằng phương pháp đệ quy quay lui, thích hợp cho môi trường nhỏ hoặc khi cần tìm tất cả đường đi.
-5. **Q-Learning**Thuật toán học củng cố giúp nhân vật học dần cách chọn hành động tối ưu qua các lần chơi, tăng khả năng tự thích nghi.
-6. **And-Or Search**
+5. **And-Or Search**
    Tìm kiếm dạng cây quyết định, dùng trong môi trường phức tạp, đảm bảo không bỏ sót lựa chọn.
    **
 
