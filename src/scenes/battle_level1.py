@@ -32,7 +32,7 @@ class BattleLevel1(BattleBase):
         # Khởi tạo các đối tượng từ object layer
         BGDoor_dir = os.path.join(project_root, 'assets', 'backgrounds')
         self.BGDoor = pygame.image.load(os.path.join(BGDoor_dir, "BGDoor.png")).convert_alpha()
-        self.BGDoor = pygame.transform.scale(self.BGDoor, (96, 96))
+        self.BGDoor = pygame.transform.scale(self.BGDoor, (96, 89))
 
         for obj in self.spawn_objects:
             x = int(obj["x"])
@@ -96,13 +96,21 @@ class BattleLevel1(BattleBase):
 
         self.cached_platforms = []
         for obj in self.ground_objects:
+            x = int(obj["x"])
+            y = int(obj["y"])
             w = int(obj["width"])
             h = int(obj["height"])
             if obj["y"] < 450:
                 img = pygame.transform.scale(self.custom_platform_img, (w, h))
             else:
+                # Kéo giãn sát viền trái/phải nếu là mặt đất chính
+                if x < 32:
+                    w += x
+                    x = 0
+                if x + w > 768:
+                    w = 800 - x
                 img = pygame.transform.scale(self.custom_ground_img, (w, h))
-            self.cached_platforms.append((img, obj))
+            self.cached_platforms.append((img, x, y))
 
     def run(self):
         clock = pygame.time.Clock()
@@ -300,10 +308,10 @@ class BattleLevel1(BattleBase):
         super().draw(self.camera_offset)
 
         # Vẽ các platform và ground custom từ cache (đã được lọc trong suốt)
-        for img, obj in self.cached_platforms:
-            x = obj["x"] - self.camera_offset[0]
-            y = obj["y"] - self.camera_offset[1]
-            self.screen.blit(img, (x, y))
+        for img, x, y in self.cached_platforms:
+            draw_x = x - self.camera_offset[0]
+            draw_y = y - self.camera_offset[1]
+            self.screen.blit(img, (draw_x, draw_y))
 
         if self.door_pos:
             door_x = self.door_pos[0] - self.camera_offset[0]
