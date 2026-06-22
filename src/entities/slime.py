@@ -1,5 +1,6 @@
 import pygame
 import os
+import math
 from src.ai.algorithms import bfs_path, dfs_path, ucs_path, greedy_path, hill_climb_step, backtracking_path, q_learning_train, q_learning_step, and_or_search_probabilistic
 import random
 
@@ -41,6 +42,8 @@ class Slime(pygame.sprite.Sprite):
         self.last_attack_time = 0
         self.attack_cooldown = 2000
         self.death_animation_complete = False  # Biến mới để theo dõi trạng thái animation Death
+        self.was_in_air = False
+        self.land_squash = 0.0
 
         self.custom_image = None
         if custom_img_path:
@@ -572,17 +575,68 @@ class Slime(pygame.sprite.Sprite):
                             elif move_value < 0:
                                 self.rect.top = tile_rect.bottom
                                 self.vel_y = 0
+    def apply_gravity(self):
+        if not self.alive:
+            return
+        self.vel_y += 0.75
+        if self.vel_y > 10:
+            self.vel_y = 10
+        self.rect.y += self.vel_y
+        self.check_collision('vertical', self.vel_y)
+        if self.rect.bottom > 600:
+            self.rect.bottom = 600
+            self.vel_y = 0
+            self.in_air = False
 
     def update_animation(self):
         cooldown = 100
-        old_bottomleft = self.rect.bottomleft
-        if self.custom_image and self.action in [0, 1]:  # Idle or Jump
-            self.image = self.custom_image
-        else:
-            self.image = self.animation_list[self.action][self.frame_index]
+        
+        if self.custom_image:
+            self.apply_gravity()
+            old_bottom = self.rect.bottom
+            old_centerx = self.rect.centerx
+            # Kiểm tra chuyển trạng thái từ trên không xuống đất để tạo độ dẹp nảy pudding
+            if self.was_in_air and not self.in_air:
+                self.land_squash = 0.45  # Biến dạng dẹp mạnh khi vừa tiếp đất (tăng từ 0.35)
+            self.was_in_air = self.in_air
             
-        self.rect = self.image.get_rect()
-        self.rect.bottomleft = old_bottomleft
+            # Giảm dần độ dẹp khi tiếp đất về vị trí cũ (hiệu ứng đàn hồi)
+            self.land_squash *= 0.80
+            if self.land_squash < 0.01:
+                self.land_squash = 0.0
+
+            if self.action in [0, 1]:  # Idle hoặc Jump
+                # Hiệu ứng squish & stretch (bóp méo co giãn) như pudding / nước
+                if self.in_air:
+                    # Khi đang bay: kéo giãn dọc theo vận tốc rơi/nhảy
+                    stretch = min(0.28, abs(self.vel_y) * 0.035)
+                    scale_x = 1.0 - stretch * 0.7
+                    scale_y = 1.0 + stretch
+                else:
+                    if self.land_squash > 0.0:
+                        # Khi vừa tiếp đất: dẹp bề ngang, bè ra 2 bên
+                        scale_x = 1.0 + self.land_squash
+                        scale_y = 1.0 - self.land_squash * 0.8
+                    else:
+                        # Khi di chuyển/đứng yên bình thường: tạo sóng hình sin nhấp nhô nhẹ nhàng
+                        time_sec = pygame.time.get_ticks() / 1000.0
+                        wave = math.sin(time_sec * 5.5)
+                        scale_x = 1.0 + 0.18 * wave
+                        scale_y = 1.0 - 0.18 * wave
+                
+                w_orig, h_orig = self.custom_image.get_size()
+                w_new = max(5, int(w_orig * scale_x))
+                h_new = max(5, int(h_orig * scale_y))
+                self.image = pygame.transform.scale(self.custom_image, (w_new, h_new))
+            else:
+                self.image = self.animation_list[self.action][self.frame_index]
+                
+            self.rect = self.image.get_rect()
+            self.rect.bottom = old_bottom
+            self.rect.centerx = old_centerx
+        else:
+            # Nguyên bản 100% cho Level 2
+            self.image = self.animation_list[self.action][self.frame_index]
 
         if pygame.time.get_ticks() - self.update_time > cooldown:
             self.update_time = pygame.time.get_ticks()
