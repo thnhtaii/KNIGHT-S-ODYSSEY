@@ -13,6 +13,7 @@ class BattleBase:
 
         self.tile_size = 16
         self.tile_layers = []
+        self.tile_layers_visibility = []
         self.object_layers = []
         self.ground_objects = []
         self.wall_objects = []
@@ -47,9 +48,11 @@ class BattleBase:
             })
 
         self.tile_layers.clear()
+        self.tile_layers_visibility.clear()
         self.object_layers.clear()
         self.margin_data.clear()  # Xóa dữ liệu margin cũ
         for layer in root.findall("layer"):
+            visible = layer.get("visible") != "0"
             data = layer.find("data")
             encoding = data.get("encoding")
             compression = data.get("compression")
@@ -64,6 +67,7 @@ class BattleBase:
                     self.margin_data = tile_ids  # Lưu dữ liệu margin
                 else:
                     self.tile_layers.append(tile_ids)
+                    self.tile_layers_visibility.append(visible)
             elif encoding == "csv":
                 raw_data = data.text.strip().replace('\n', '')
                 tile_ids = [int(val) for val in raw_data.split(',') if val.strip().isdigit()]
@@ -71,6 +75,7 @@ class BattleBase:
                     self.margin_data = tile_ids  # Lưu dữ liệu margin
                 else:
                     self.tile_layers.append(tile_ids)
+                    self.tile_layers_visibility.append(visible)
             else:
                 print(f"[ERROR] Unsupported encoding/compression: {encoding} / {compression}")
 
@@ -152,9 +157,12 @@ class BattleBase:
         bg_path = os.path.join(self.project_root, "assets", "backgrounds", bg_filename)
         if os.path.exists(bg_path):
             bg = pygame.image.load(bg_path).convert()
+            bg = pygame.transform.scale(bg, (self.screen.get_width(), self.screen.get_height()))
             self.screen.blit(bg, (-camera_offset[0], -camera_offset[1]))
 
         for layer_idx, layer in enumerate(self.tile_layers):
+            if layer_idx < len(self.tile_layers_visibility) and not self.tile_layers_visibility[layer_idx]:
+                continue
             for idx, tile in enumerate(layer):
                 tile = int(tile)
                 if tile > 0:
