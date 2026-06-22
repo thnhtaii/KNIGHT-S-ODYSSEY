@@ -3,12 +3,15 @@ import heapq
 import random
 
 def bfs_path(start, goal, grid):
+    """BFS với Early Goal Test - kiểm tra mục tiêu ngay khi sinh node con"""
     rows, cols = len(grid), len(grid[0])
 
-    # ✅ Kiểm tra start và goal nằm trong phạm vi bản đồ
     if not (0 <= start[0] < cols and 0 <= start[1] < rows and
             0 <= goal[0] < cols and 0 <= goal[1] < rows):
         print(f"[BFS ERROR] Invalid start or goal: start={start}, goal={goal}")
+        return []
+
+    if start == goal:
         return []
 
     visited = [[False for _ in range(cols)] for _ in range(rows)]
@@ -18,31 +21,136 @@ def bfs_path(start, goal, grid):
     queue.append(start)
     visited[start[1]][start[0]] = True
 
-    directions = [(0, 1), (1, 0), (0, -1), (-1, 0)]  # xuống, phải, lên, trái
+    directions = [(0, 1), (1, 0), (0, -1), (-1, 0)]
+    found = False
 
     while queue:
         x, y = queue.popleft()
-        if (x, y) == goal:
-            break
         for dx, dy in directions:
             nx, ny = x + dx, y + dy
             if 0 <= nx < cols and 0 <= ny < rows and not visited[ny][nx] and grid[ny][nx] == 0:
-                queue.append((nx, ny))
                 visited[ny][nx] = True
                 prev[ny][nx] = (x, y)
+                if (nx, ny) == goal:  # Early Goal Test
+                    found = True
+                    break
+                queue.append((nx, ny))
+        if found:
+            break
 
-    # Truy vết lại đường đi
+    if not found:
+        return []
+
     path = []
     at = goal
     while at != start:
         if not (0 <= at[0] < cols and 0 <= at[1] < rows):
-            print(f"[BFS ERROR] Out of bounds during path trace: at={at}")
             return []
         path.append(at)
         at = prev[at[1]][at[0]]
         if at is None:
-            return []  # Không tìm thấy đường đi
+            return []
+    path.reverse()
+    return path
 
+
+def dfs_path(start, goal, grid):
+    """DFS với Early Goal Test - kiểm tra mục tiêu ngay khi sinh node con"""
+    rows, cols = len(grid), len(grid[0])
+
+    if not (0 <= start[0] < cols and 0 <= start[1] < rows and
+            0 <= goal[0] < cols and 0 <= goal[1] < rows):
+        return []
+
+    if start == goal:
+        return []
+
+    visited = [[False for _ in range(cols)] for _ in range(rows)]
+    prev = [[None for _ in range(cols)] for _ in range(rows)]
+
+    stack = [start]
+    visited[start[1]][start[0]] = True
+
+    directions = [(0, 1), (1, 0), (0, -1), (-1, 0)]
+    found = False
+
+    while stack:
+        x, y = stack.pop()
+        for dx, dy in directions:
+            nx, ny = x + dx, y + dy
+            if 0 <= nx < cols and 0 <= ny < rows and not visited[ny][nx] and grid[ny][nx] == 0:
+                visited[ny][nx] = True
+                prev[ny][nx] = (x, y)
+                if (nx, ny) == goal:  # Early Goal Test
+                    found = True
+                    break
+                stack.append((nx, ny))
+        if found:
+            break
+
+    if not found:
+        return []
+
+    path = []
+    at = goal
+    while at != start:
+        if not (0 <= at[0] < cols and 0 <= at[1] < rows):
+            return []
+        path.append(at)
+        at = prev[at[1]][at[0]]
+        if at is None:
+            return []
+    path.reverse()
+    return path
+
+
+def ucs_path(start, goal, grid):
+    """UCS - Uniform Cost Search với chi phí = số ô di chuyển"""
+    rows, cols = len(grid), len(grid[0])
+
+    if not (0 <= start[0] < cols and 0 <= start[1] < rows and
+            0 <= goal[0] < cols and 0 <= goal[1] < rows):
+        return []
+
+    if start == goal:
+        return []
+
+    dist = {start: 0}
+    prev = {}
+    heap = [(0, start[0], start[1])]
+
+    directions = [(0, 1), (1, 0), (0, -1), (-1, 0)]
+
+    while heap:
+        cost, x, y = heapq.heappop(heap)
+        state = (x, y)
+
+        if cost > dist.get(state, float('inf')):
+            continue
+
+        if state == goal:  # Late Goal Test (UCS phải dùng late để đảm bảo tối ưu)
+            break
+
+        for dx, dy in directions:
+            nx, ny = x + dx, y + dy
+            next_state = (nx, ny)
+            if 0 <= nx < cols and 0 <= ny < rows and grid[ny][nx] == 0:
+                new_cost = cost + 1  # Chi phí mỗi bước = 1 ô di chuyển
+                if new_cost < dist.get(next_state, float('inf')):
+                    dist[next_state] = new_cost
+                    prev[next_state] = state
+                    heapq.heappush(heap, (new_cost, nx, ny))
+
+    if goal not in prev:
+        return []
+
+    path = []
+    at = goal
+    while at != start:
+        path.append(at)
+        at = prev.get(at)
+        if at is None:
+            return []
     path.reverse()
     return path
 

@@ -46,25 +46,16 @@ class BattleLevel1(BattleBase):
                 self.player = Knight(x, y, scale=0.35, speed=3, battle_base=self)
                 self.player_group = pygame.sprite.Group(self.player)
             elif props.get("enemy") == "yes":
-                if len(self.slime_list) == 3:  # chỉ con slime thứ 4
-                    move_area = pygame.Rect(x - 50, y - 50, 100, 100)  # giới hạn phạm vi nhỏ hơn
-                    slime = Slime(x, y, 1.0, 2, self, move_area=move_area)
-                    slime.name = "slime_back"
-                else:
-                    move_area = pygame.Rect(x - 100, y - 50, 200, 100)
-                    slime = Slime(x, y, 1.0, 2, self, move_area=move_area)
+                if len(self.slime_list) >= 3:  # Chỉ tạo 3 slime cho 3 thuật toán uninformed search
+                    continue
+                move_area = pygame.Rect(x - 100, y - 50, 200, 100)
+                slime = Slime(x, y, 1.0, 2, self, move_area=move_area)
                 if len(self.slime_list) == 0:
                     slime.name = "slime_bfs"
                 elif len(self.slime_list) == 1:
-                    slime.name = "slime_greedy"
+                    slime.name = "slime_dfs"
                 elif len(self.slime_list) == 2:
-                    slime.name = "slime_hill"
-                elif len(self.slime_list) == 3:
-                    slime.name = "slime_back"
-                elif len(self.slime_list) == 4:
-                    slime.name = "slime_q"
-                elif len(self.slime_list) == 5:
-                    slime.name = "slime_andor"
+                    slime.name = "slime_ucs"
                 self.slime_list.append(slime)
 
         if not self.player:
@@ -250,16 +241,10 @@ class BattleLevel1(BattleBase):
                     if slime.alive:
                         if slime.name == "slime_bfs":
                             slime.update_bfs(self.player, self.grid, self.margin_data)
-                        elif slime.name == "slime_greedy":
-                            slime.update_greedy(self.player, self.grid, self.margin_data)
-                        elif slime.name == "slime_hill":
-                            slime.update_hill_climb(self.player, self.grid, self.margin_data)
-                        elif slime.name == "slime_back":
-                            slime.update_backtracking(self.player, self.grid, self.margin_data)
-                        elif slime.name == "slime_q":
-                            slime.update_q_learning(self.player, self.grid, self.margin_data)
-                        elif slime.name == "slime_andor":
-                            slime.update_andor(self.player, self.grid, self.margin_data)
+                        elif slime.name == "slime_dfs":
+                            slime.update_dfs(self.player, self.grid, self.margin_data)
+                        elif slime.name == "slime_ucs":
+                            slime.update_ucs(self.player, self.grid, self.margin_data)
                         else:
                             slime.move()
                         slime.try_attack_player(self.player)
