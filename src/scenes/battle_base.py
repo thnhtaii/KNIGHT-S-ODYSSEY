@@ -14,6 +14,7 @@ class BattleBase:
         self.tile_size = 16
         self.tile_layers = []
         self.tile_layers_visibility = []
+        self.tile_layers_names = []
         self.object_layers = []
         self.ground_objects = []
         self.wall_objects = []
@@ -49,6 +50,7 @@ class BattleBase:
 
         self.tile_layers.clear()
         self.tile_layers_visibility.clear()
+        self.tile_layers_names.clear()
         self.object_layers.clear()
         self.margin_data.clear()  # Xóa dữ liệu margin cũ
         for layer in root.findall("layer"):
@@ -68,6 +70,7 @@ class BattleBase:
                 else:
                     self.tile_layers.append(tile_ids)
                     self.tile_layers_visibility.append(visible)
+                    self.tile_layers_names.append(layer_name)
             elif encoding == "csv":
                 raw_data = data.text.strip().replace('\n', '')
                 tile_ids = [int(val) for val in raw_data.split(',') if val.strip().isdigit()]
@@ -76,6 +79,7 @@ class BattleBase:
                 else:
                     self.tile_layers.append(tile_ids)
                     self.tile_layers_visibility.append(visible)
+                    self.tile_layers_names.append(layer_name)
             else:
                 print(f"[ERROR] Unsupported encoding/compression: {encoding} / {compression}")
 
@@ -162,6 +166,8 @@ class BattleBase:
 
         for layer_idx, layer in enumerate(self.tile_layers):
             if layer_idx < len(self.tile_layers_visibility) and not self.tile_layers_visibility[layer_idx]:
+                continue
+            if self.level_name == "level1" and layer_idx < len(self.tile_layers_names) and self.tile_layers_names[layer_idx] == "ground":
                 continue
             for idx, tile in enumerate(layer):
                 tile = int(tile)

@@ -89,6 +89,21 @@ class BattleLevel1(BattleBase):
                 line.append(1 if tile > 0 else 0)
             self.grid.append(line)
 
+        # Load and cache custom platform and ground images (with transparent backgrounds)
+        bg_dir = os.path.join(project_root, 'assets', 'backgrounds')
+        self.custom_platform_img = pygame.image.load(os.path.join(bg_dir, "custom_platform.png")).convert_alpha()
+        self.custom_ground_img = pygame.image.load(os.path.join(bg_dir, "custom_ground.png")).convert_alpha()
+
+        self.cached_platforms = []
+        for obj in self.ground_objects:
+            w = int(obj["width"])
+            h = int(obj["height"])
+            if obj["y"] < 450:
+                img = pygame.transform.scale(self.custom_platform_img, (w, h))
+            else:
+                img = pygame.transform.scale(self.custom_ground_img, (w, h))
+            self.cached_platforms.append((img, obj))
+
     def run(self):
         clock = pygame.time.Clock()
         self.prev_health = self.player.health  # Khởi tạo máu ban đầu
@@ -283,6 +298,12 @@ class BattleLevel1(BattleBase):
     def draw(self):
         self.screen.fill((0, 0, 0))
         super().draw(self.camera_offset)
+
+        # Vẽ các platform và ground custom từ cache (đã được lọc trong suốt)
+        for img, obj in self.cached_platforms:
+            x = obj["x"] - self.camera_offset[0]
+            y = obj["y"] - self.camera_offset[1]
+            self.screen.blit(img, (x, y))
 
         if self.door_pos:
             door_x = self.door_pos[0] - self.camera_offset[0]
