@@ -4,7 +4,7 @@ from src.ai.algorithms import bfs_path, dfs_path, ucs_path, greedy_path, hill_cl
 import random
 
 class Slime(pygame.sprite.Sprite):
-    def __init__(self, x, y, scale, speed, battle_base, move_area=None):
+    def __init__(self, x, y, scale, speed, battle_base, move_area=None, custom_img_path=None):
         pygame.sprite.Sprite.__init__(self)
         self.alive = True
         self.speed = speed
@@ -42,6 +42,17 @@ class Slime(pygame.sprite.Sprite):
         self.attack_cooldown = 2000
         self.death_animation_complete = False  # Biến mới để theo dõi trạng thái animation Death
 
+        self.custom_image = None
+        if custom_img_path:
+            try:
+                loaded_img = pygame.image.load(custom_img_path).convert_alpha()
+                w_orig, h_orig = loaded_img.get_size()
+                h_new = 36
+                w_new = int(h_new * w_orig / h_orig)
+                self.custom_image = pygame.transform.scale(loaded_img, (w_new, h_new))
+            except Exception as e:
+                print(f"[ERROR] Failed to load custom slime image: {e}")
+
         self.animation_types = ['Idle', 'Jump', 'Hurt', 'Death']
         for animation in self.animation_types:
             temp_list = []
@@ -59,7 +70,10 @@ class Slime(pygame.sprite.Sprite):
                     temp_list.append(img)
             self.animation_list.append(temp_list if temp_list else [pygame.Surface((32, 32))])
 
-        self.image = self.animation_list[self.action][self.frame_index]
+        if self.custom_image:
+            self.image = self.custom_image
+        else:
+            self.image = self.animation_list[self.action][self.frame_index]
         self.rect = self.image.get_rect()
         self.rect.bottomleft = (x, y)
 
@@ -561,7 +575,15 @@ class Slime(pygame.sprite.Sprite):
 
     def update_animation(self):
         cooldown = 100
-        self.image = self.animation_list[self.action][self.frame_index]
+        old_bottomleft = self.rect.bottomleft
+        if self.custom_image and self.action in [0, 1]:  # Idle or Jump
+            self.image = self.custom_image
+        else:
+            self.image = self.animation_list[self.action][self.frame_index]
+            
+        self.rect = self.image.get_rect()
+        self.rect.bottomleft = old_bottomleft
+
         if pygame.time.get_ticks() - self.update_time > cooldown:
             self.update_time = pygame.time.get_ticks()
             self.frame_index += 1

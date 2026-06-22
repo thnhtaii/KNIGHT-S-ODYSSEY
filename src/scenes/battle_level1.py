@@ -49,7 +49,10 @@ class BattleLevel1(BattleBase):
                 if len(self.slime_list) >= 6:  # Tạo 6 slime (2 slime cho mỗi thuật toán)
                     continue
                 move_area = pygame.Rect(x - 100, y - 50, 200, 100)
-                slime = Slime(x, y, 1.0, 2, self, move_area=move_area)
+                slime_dir = os.path.join(project_root, 'assets', 'sprites', 'slime')
+                custom_img_name = "custom_slime1.png" if len(self.slime_list) % 2 == 0 else "custom_slime2.png"
+                custom_img_path = os.path.join(slime_dir, custom_img_name)
+                slime = Slime(x, y, 1.0, 2, self, move_area=move_area, custom_img_path=custom_img_path)
                 names = ["slime_bfs", "slime_dfs", "slime_ucs"]
                 slime.name = names[len(self.slime_list) % 3]
                 self.slime_list.append(slime)
