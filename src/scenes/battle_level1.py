@@ -34,6 +34,7 @@ class BattleLevel1(BattleBase):
         self.BGDoor = pygame.image.load(os.path.join(BGDoor_dir, "BGDoor.png")).convert_alpha()
         self.BGDoor = pygame.transform.scale(self.BGDoor, (96, 89))
 
+        slime_count = 0
         for obj in self.spawn_objects:
             x = int(obj["x"])
             y = int(obj["y"])
@@ -46,15 +47,20 @@ class BattleLevel1(BattleBase):
                 self.player = Knight(x, y, scale=0.35, speed=3, battle_base=self)
                 self.player_group = pygame.sprite.Group(self.player)
             elif props.get("enemy") == "yes":
-                if len(self.slime_list) >= 6:  # Tạo 6 slime (2 slime cho mỗi thuật toán)
+                # Xác định tên và chỉ số luân phiên ban đầu trước khi lọc bỏ để tránh lệch tên
+                names = ["slime_bfs", "slime_dfs", "slime_ucs"]
+                current_slime_name = names[slime_count % 3]
+                slime_count += 1
+
+                if len(self.slime_list) >= 5:  # Tạo tối đa 5 slime (bỏ con UCS cuối ở tầng 2)
                     continue
+
                 move_area = pygame.Rect(x - 100, y - 50, 200, 100)
                 slime_dir = os.path.join(project_root, 'assets', 'sprites', 'slime')
                 custom_img_name = "custom_slime1.png" if len(self.slime_list) % 2 == 0 else "custom_slime2.png"
                 custom_img_path = os.path.join(slime_dir, custom_img_name)
                 slime = Slime(x, y, 1.0, 2, self, move_area=move_area, custom_img_path=custom_img_path)
-                names = ["slime_bfs", "slime_dfs", "slime_ucs"]
-                slime.name = names[len(self.slime_list) % 3]
+                slime.name = current_slime_name
                 self.slime_list.append(slime)
 
         if not self.player:
@@ -335,6 +341,7 @@ class BattleLevel1(BattleBase):
                     font = pygame.font.SysFont("Arial", 10, bold=True)
                     algo_name = sprite.name.replace("slime_", "").upper()
                     text_surface = font.render(algo_name, True, (255, 255, 255))
+                    text_surface.set_alpha(130)  # Giảm độ đục (tăng độ trong suốt) để hiện rõ mắt mũi
                     text_rect = text_surface.get_rect(center=(draw_x + sprite.rect.width // 2, draw_y + sprite.rect.height // 2 + 2))
                     self.screen.blit(text_surface, text_rect)
 
