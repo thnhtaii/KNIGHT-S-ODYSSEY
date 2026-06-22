@@ -301,7 +301,15 @@ class BattleLevel2(BattleBase):
 
         for sprite in self.enemy_group:
             if sprite.alive or sprite.action == 3:  # Vẽ Slime sống hoặc đang trong trạng thái Death
-                self.screen.blit(sprite.image, (sprite.rect.x - self.camera_offset[0], sprite.rect.y - self.camera_offset[1]))
+                draw_x = sprite.rect.x - self.camera_offset[0]
+                draw_y = sprite.rect.y - self.camera_offset[1]
+                self.screen.blit(sprite.image, (draw_x, draw_y))
+                if sprite.alive:
+                    font = pygame.font.SysFont("Arial", 10, bold=True)
+                    algo_name = sprite.name.replace("slime_", "").upper()
+                    text_surface = font.render(algo_name, True, (255, 255, 255))
+                    text_rect = text_surface.get_rect(center=(draw_x + sprite.rect.width // 2, draw_y + sprite.rect.height // 2 + 2))
+                    self.screen.blit(text_surface, text_rect)
 
         self.health_bar.draw(self.screen)
 

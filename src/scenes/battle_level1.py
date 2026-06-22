@@ -46,16 +46,12 @@ class BattleLevel1(BattleBase):
                 self.player = Knight(x, y, scale=0.35, speed=3, battle_base=self)
                 self.player_group = pygame.sprite.Group(self.player)
             elif props.get("enemy") == "yes":
-                if len(self.slime_list) >= 3:  # Chỉ tạo 3 slime cho 3 thuật toán uninformed search
+                if len(self.slime_list) >= 6:  # Tạo 6 slime (2 slime cho mỗi thuật toán)
                     continue
                 move_area = pygame.Rect(x - 100, y - 50, 200, 100)
                 slime = Slime(x, y, 1.0, 2, self, move_area=move_area)
-                if len(self.slime_list) == 0:
-                    slime.name = "slime_bfs"
-                elif len(self.slime_list) == 1:
-                    slime.name = "slime_dfs"
-                elif len(self.slime_list) == 2:
-                    slime.name = "slime_ucs"
+                names = ["slime_bfs", "slime_dfs", "slime_ucs"]
+                slime.name = names[len(self.slime_list) % 3]
                 self.slime_list.append(slime)
 
         if not self.player:
@@ -300,7 +296,15 @@ class BattleLevel1(BattleBase):
 
         for sprite in self.enemy_group:
             if sprite.alive or sprite.action == 3:  # Vẽ Slime sống hoặc đang trong trạng thái Death
-                self.screen.blit(sprite.image, (sprite.rect.x - self.camera_offset[0], sprite.rect.y - self.camera_offset[1]))
+                draw_x = sprite.rect.x - self.camera_offset[0]
+                draw_y = sprite.rect.y - self.camera_offset[1]
+                self.screen.blit(sprite.image, (draw_x, draw_y))
+                if sprite.alive:
+                    font = pygame.font.SysFont("Arial", 10, bold=True)
+                    algo_name = sprite.name.replace("slime_", "").upper()
+                    text_surface = font.render(algo_name, True, (255, 255, 255))
+                    text_rect = text_surface.get_rect(center=(draw_x + sprite.rect.width // 2, draw_y + sprite.rect.height // 2 + 2))
+                    self.screen.blit(text_surface, text_rect)
 
         self.health_bar.draw(self.screen)
 
