@@ -52,7 +52,7 @@ class BattleLevel1(BattleBase):
                 current_slime_name = names[slime_count % 3]
                 slime_count += 1
 
-                if len(self.slime_list) >= 5:  # Tạo tối đa 5 slime (bỏ con UCS cuối ở tầng 2)
+                if len(self.slime_list) >= 5:
                     continue
 
                 move_area = pygame.Rect(x - 100, y - 50, 200, 100)
