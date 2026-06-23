@@ -226,18 +226,34 @@ class BattleLevel1(BattleBase):
                     pass
                 else:
                     # Kiểm tra nếu đang trong animation Attack
+                    if self.player.action == 3:
+                        print(f"[DEBUG ATTACK] action=3, frame_index={self.player.frame_index}, attack_frame={self.player.attack_frame}, anim_len={len(self.player.animation_list[3])}, flip={self.player.flip}")
                     if self.player.action == 3 and self.player.frame_index < len(self.player.animation_list[3]) - 1:
-                        # Gây sát thương ở frame thứ 2 của Attack
-                        if self.player.attack_frame == 2:
+                        # Gây sát thương từ frame 1 trở đi (mở rộng window sát thương)
+                        if self.player.attack_frame >= 1:
+                            # Tạo vùng tấn công rộng, bao phủ từ người chơi ra phía trước
+                            attack_width = 80  # Tầm chém rộng hơn
+                            if self.player.flip:
+                                # Quay trái: vùng tấn công từ trái người chơi
+                                attack_x = self.player.rect.left - attack_width
+                            else:
+                                # Quay phải: vùng tấn công từ bên phải người chơi
+                                attack_x = self.player.rect.left
                             attack_range = pygame.Rect(
-                                self.player.rect.left - 50 if self.player.flip else self.player.rect.right,
-                                self.player.rect.top - 20,
-                                50,
-                                self.player.rect.height + 20
+                                attack_x,
+                                self.player.rect.top - 30,
+                                self.player.rect.width + attack_width,
+                                self.player.rect.height + 60
                             )
+                            # Khởi tạo set theo dõi slime đã bị đánh trong lượt attack này
+                            if not hasattr(self, '_attacked_slimes'):
+                                self._attacked_slimes = set()
                             for slime in self.slime_list:
-                                if slime.alive and attack_range.colliderect(slime.rect):
-                                    print(f"Attack range: {attack_range}, Slime rect: {slime.rect}")
+                                if slime.alive:
+                                    print(f"[DEBUG HIT CHECK] attack_range={attack_range}, slime '{slime.name}' rect={slime.rect}, collide={attack_range.colliderect(slime.rect)}, already_hit={id(slime) in self._attacked_slimes}")
+                                if slime.alive and id(slime) not in self._attacked_slimes and attack_range.colliderect(slime.rect):
+                                    print(f">>> HIT! Attack range: {attack_range}, Slime rect: {slime.rect}")
+                                    self._attacked_slimes.add(id(slime))
                                     slime.check_alive()  # Chết ngay sau một lần đánh
                                     print(f"[Slime] {slime.name} đã chết!")
                     else:
@@ -246,6 +262,7 @@ class BattleLevel1(BattleBase):
                             self.player.update_action(10)
                         elif self.player.attack:
                             if self.player.action != 3:
+                                self._attacked_slimes = set()  # Reset danh sách slime đã bị đánh
                                 self.player.update_action(3)
                         elif self.player.block:
                             self.player.update_action(4)
