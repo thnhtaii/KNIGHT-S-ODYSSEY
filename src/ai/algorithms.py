@@ -326,44 +326,152 @@ def and_or_search_probabilistic(start, goal, grid):
     return []
 
 
-# def and_or_search(start, goal, grid):
-#     rows, cols = len(grid), len(grid[0])
-#     explored = set()  # Tập hợp các trạng thái đã thăm
-#     path = []
+def random_restart_hill_climbing_path(start, goal, grid, max_restarts=10):
+    rows, cols = len(grid), len(grid[0])
+    
+    def value(state):
+        # VALUE(n) = -h(n) để chuyển đổi bài toán tìm cực đại sang giảm khoảng cách Manhattan
+        return -(abs(state[0] - goal[0]) + abs(state[1] - goal[1]))
+        
+    for r in range(max_restarts):
+        current = start
+        path = [current]
+        visited = set([current])
+        
+        while True:
+            if current == goal:
+                return path
+                
+            x, y = current
+            neighbors = []
+            for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+                nx, ny = x + dx, y + dy
+                if 0 <= nx < cols and 0 <= ny < rows and grid[ny][nx] == 0:
+                    neighbors.append((nx, ny))
+            
+            # Better_Neighbors = { n in Neighbor_States | VALUE(n) > VALUE(Current_State) }
+            better_neighbors = [n for n in neighbors if value(n) > value(current) and n not in visited]
+            
+            if not better_neighbors:
+                # Không còn lân cận nào tốt hơn -> Đạt cực trị địa phương (break ra để restart)
+                break
+                
+            next_state = random.choice(better_neighbors)
+            current = next_state
+            path.append(current)
+            visited.add(current)
+            
+    return []  # failure
 
-#     def search(state, current_path):
-#         # Điều kiện dừng: nếu đã đến mục tiêu
-#         if state == goal:
-#             path.append(state)
-#             return True
-        
-#         # Nếu trạng thái đã được thăm, bỏ qua để tránh vòng lặp
-#         if state in explored:
-#             return False
-        
-#         # Thêm trạng thái vào tập đã thăm
-#         explored.add(state)
-        
-#         # Thêm trạng thái vào đường đi hiện tại
-#         current_path.append(state)
-        
-#         # Thử tất cả các hành động có thể
-#         for action in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
-#             next_state = (state[0] + action[0], state[1] + action[1])
-#             # Kiểm tra tính hợp lệ của trạng thái tiếp theo
-#             if (0 <= next_state[0] < cols and 0 <= next_state[1] < rows and 
-#                 grid[next_state[1]][next_state[0]] == 0 and 
-#                 next_state not in current_path):  # Tránh chu trình
-#                 if search(next_state, current_path):
-#                     path.append(next_state)
-#                     return True
-        
-#         # Loại bỏ trạng thái khỏi đường đi hiện tại nếu không tìm thấy đường
-#         current_path.pop()
-#         return False
 
-#     # Gọi hàm tìm kiếm từ trạng thái bắt đầu
-#     if search(start, []):
-#         path.reverse()
-#         return path
-#     return []  # Trả về danh sách rỗng nếu không tìm thấy đường đi
+def simulated_annealing_path(start, goal, grid, T0=10.0, Tmin=0.05, alpha=0.98):
+    import math
+    
+    def h(state):
+        return abs(state[0] - goal[0]) + abs(state[1] - goal[1])
+        
+    current = start
+    path = [current]
+    T = T0
+    rows, cols = len(grid), len(grid[0])
+    
+    while T > Tmin:
+        if current == goal:
+            return path
+            
+        x, y = current
+        neighbors = []
+        for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+            nx, ny = x + dx, y + dy
+            if 0 <= nx < cols and 0 <= ny < rows and grid[ny][nx] == 0:
+                neighbors.append((nx, ny))
+                
+        if not neighbors:
+            break
+            
+        next_state = random.choice(neighbors)
+        delta = h(next_state) - h(current)
+        
+        if delta < 0:
+            current = next_state
+            path.append(current)
+        else:
+            p = math.exp(-delta / T)
+            if random.random() < p:
+                current = next_state
+                path.append(current)
+                
+        T = alpha * T
+        
+    if current == goal:
+        return path
+    return []
+
+
+def local_beam_path(start, goal, grid, k=3):
+    rows, cols = len(grid), len(grid[0])
+    
+    def value(state):
+        return -(abs(state[0] - goal[0]) + abs(state[1] - goal[1]))
+        
+    parent = {start: None}
+    
+    # Khởi tạo chùm tia ban đầu RANDOM_K_STATES(Start)
+    start_neighbors = []
+    x, y = start
+    for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+        nx, ny = x + dx, y + dy
+        if 0 <= nx < cols and 0 <= ny < rows and grid[ny][nx] == 0:
+            start_neighbors.append((nx, ny))
+            parent[(nx, ny)] = start
+            
+    current_state_set = [start] + start_neighbors
+    current_state_set = current_state_set[:k]
+    
+    visited = set(current_state_set)
+    max_steps = 200
+    step = 0
+    best_state = start
+    
+    while step < max_steps:
+        neighbor_states = []
+        
+        for state in current_state_set:
+            sx, sy = state
+            for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+                nx, ny = sx + dx, sy + dy
+                if 0 <= nx < cols and 0 <= ny < rows and grid[ny][nx] == 0:
+                    neighbor = (nx, ny)
+                    if neighbor not in visited:
+                        neighbor_states.append(neighbor)
+                        parent[neighbor] = state
+                        visited.add(neighbor)
+                        
+        if not neighbor_states:
+            current_state_set.sort(key=value, reverse=True)
+            best_state = current_state_set[0]
+            break
+            
+        found_goal = False
+        for neighbor in neighbor_states:
+            if neighbor == goal:
+                found_goal = True
+                best_state = goal
+                break
+        if found_goal:
+            break
+            
+        neighbor_states.sort(key=value, reverse=True)
+        current_state_set = neighbor_states[:k]
+        step += 1
+        
+    path = []
+    curr = best_state
+    while curr is not None:
+        path.append(curr)
+        curr = parent.get(curr)
+    path.reverse()
+    
+    if path and path[0] == start:
+        return path
+    return []

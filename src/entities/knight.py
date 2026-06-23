@@ -209,7 +209,7 @@ class Knight(pygame.sprite.Sprite):
             self.action = 0
 
         if self.frame_index >= len(self.animation_list[self.action]):
-            if self.action == 3:  # Attack
+            if self.action in [3, 10]:  # Attack hoặc JumpAttack
                 self.attack = False
                 self.attack_frame = 0
                 self.update_action(0)  # Chuyển về Idle sau khi hoàn thành Attack
@@ -226,21 +226,21 @@ class Knight(pygame.sprite.Sprite):
             self.update_time = pygame.time.get_ticks()
             self.frame_index += 1
 
-            if self.action == 3:
+            if self.action in [3, 10]:
                 self.attack_frame += 1
                 print(f"Attack frame: {self.attack_frame}")
             print(f"Updating frame to {self.frame_index}")
 
     def update_action(self, new_action):
-        if self.action == 3 and self.frame_index < len(self.animation_list[3]) - 1:
-            return  # Không cho phép đổi hành động nếu Attack chưa hoàn thành
+        if self.action in [3, 10] and self.frame_index < len(self.animation_list[self.action]) - 1:
+            return  # Không cho phép đổi hành động nếu Attack hoặc JumpAttack chưa hoàn thành
         if new_action != self.action:
             self.action = new_action
             self.frame_index = 0
             self.update_time = pygame.time.get_ticks()
             print(f"Updated action to {new_action}")
-            if new_action == 3:
-                self.attack = True
+            if new_action in [3, 10]:
+                self.attack = False
                 self.attack_frame = 0
 
     def check_alive(self):
