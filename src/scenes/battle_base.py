@@ -167,7 +167,8 @@ class BattleBase:
         for layer_idx, layer in enumerate(self.tile_layers):
             if layer_idx < len(self.tile_layers_visibility) and not self.tile_layers_visibility[layer_idx]:
                 continue
-            if self.level_name == "level1" and layer_idx < len(self.tile_layers_names) and self.tile_layers_names[layer_idx] == "ground":
+            if (self.level_name == "level1" and layer_idx < len(self.tile_layers_names) and self.tile_layers_names[layer_idx] == "ground") or \
+               (self.level_name == "level2" and layer_idx < len(self.tile_layers_names) and self.tile_layers_names[layer_idx] in ["ground", "platform"]):
                 continue
             for idx, tile in enumerate(layer):
                 tile = int(tile)

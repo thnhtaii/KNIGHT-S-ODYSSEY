@@ -30,9 +30,34 @@ class BattleLevel2(BattleBase):
         self.music_manager.play_music(music_path)
 
         # Khởi tạo các đối tượng từ object layer
-        BGDoor_dir = os.path.join(project_root, 'assets', 'backgrounds')
-        self.BGDoor = pygame.image.load(os.path.join(BGDoor_dir, "BGDoor.png")).convert_alpha()
-        self.BGDoor = pygame.transform.scale(self.BGDoor, (96, 96))
+        bg_dir = os.path.join(project_root, 'assets', 'backgrounds')
+        
+        # Load and scale level 2 scene pieces.
+        self.BGDoor = pygame.image.load(os.path.join(bg_dir, "BGDoor_level2.png")).convert_alpha()
+        self.BGDoor = pygame.transform.scale(self.BGDoor, (489, 600))
+
+        # Load custom platform, ground, and wall images
+        self.custom_platform_img = pygame.image.load(os.path.join(bg_dir, "custom_platform_level2.png")).convert_alpha()
+        self.custom_ground_img = pygame.image.load(os.path.join(bg_dir, "custom_ground_level2.png")).convert_alpha()
+        self.custom_wall_img = pygame.image.load(os.path.join(bg_dir, "custom_wall_level2.png")).convert_alpha()
+        self.left_wall_img = pygame.transform.scale(self.custom_wall_img, (260, 500))
+
+        self.cached_platforms = []
+        for obj in self.ground_objects:
+            x = int(obj["x"])
+            y = int(obj["y"])
+            w = int(obj["width"])
+            h = int(obj["height"])
+            if y < 450:
+                img = pygame.transform.scale(self.custom_platform_img, (w, h))
+            else:
+                if x < 32:
+                    w += x
+                    x = 0
+                if x + w > 768:
+                    w = 800 - x
+                img = pygame.transform.scale(self.custom_ground_img, (w, h))
+            self.cached_platforms.append((img, x, y))
 
         for obj in self.spawn_objects:
             x = int(obj["x"])
@@ -289,11 +314,16 @@ class BattleLevel2(BattleBase):
             self.screen.blit(bg, (-self.camera_offset[0], -self.camera_offset[1]))
         super().draw(self.camera_offset)
 
-        if self.door_pos:
-            door_x = self.door_pos[0] - self.camera_offset[0]
-            door_y = self.door_pos[1] - self.BGDoor.get_height() - self.camera_offset[1]
-            # pygame.draw.rect(self.screen, (255, 0, 0), pygame.Rect(door_x, door_y, 64, 64), 2)
-            self.screen.blit(self.BGDoor, (door_x, door_y))
+        # Large scenic pieces for level 2 only. These are visual backdrops; wall
+        # collision still comes from the object layer in level2.tmx.
+        self.screen.blit(self.left_wall_img, (-22 - self.camera_offset[0], 100 - self.camera_offset[1]))
+        self.screen.blit(self.BGDoor, (380 - self.camera_offset[0], -2 - self.camera_offset[1]))
+
+        # Draw the custom platform, ground and wall images from cache
+        for img, x, y in self.cached_platforms:
+            draw_x = x - self.camera_offset[0]
+            draw_y = y - self.camera_offset[1]
+            self.screen.blit(img, (draw_x, draw_y))
 
         for sprite in self.player_group:
             flipped_image = pygame.transform.flip(sprite.image, sprite.flip, False)
