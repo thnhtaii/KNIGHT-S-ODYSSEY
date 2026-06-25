@@ -51,8 +51,7 @@ class BattleLevel2(BattleBase):
             h = int(obj["height"])
             if y < 450:
                 if x == 0:
-                    h_draw = int(w * 481 / 623)
-                    img = pygame.transform.scale(self.custom_platform_chunky, (w, h_draw))
+                    continue  # Khong ve de vi vach da nen da co san hinh anh buc
                 else:
                     img = pygame.transform.scale(self.custom_platform_img, (w, h))
             else:

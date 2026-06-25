@@ -169,17 +169,22 @@
         <property name="blockers" value="tlrb" />
       </properties>
     </object>
-    <object id="34" name="gnd" x="500" y="270" width="170" height="24">
+    <object id="34" name="gnd" x="500" y="280" width="170" height="24">
       <properties>
         <property name="blockers" value="tlrb" />
       </properties>
     </object>
-    <object id="35" name="gnd" x="288" y="396" width="185" height="24">
+    <object id="35" name="gnd" x="288" y="385" width="185" height="24">
       <properties>
         <property name="blockers" value="tlrb" />
       </properties>
     </object>
     <object id="36" name="gnd" x="508" y="444" width="150" height="24">
+      <properties>
+        <property name="blockers" value="tlrb" />
+      </properties>
+    </object>
+    <object id="39" name="gnd" x="200" y="240" width="130" height="24">
       <properties>
         <property name="blockers" value="tlrb" />
       </properties>
