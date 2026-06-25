@@ -149,7 +149,7 @@
         <property name="blockers" value="tlrb" />
       </properties>
     </object>
-    <object id="30" name="wall" x="0" y="232" width="180" height="16">
+    <object id="30" name="gnd" x="0" y="232" width="180" height="16">
       <properties>
         <property name="blockers" value="tlrb" />
       </properties>

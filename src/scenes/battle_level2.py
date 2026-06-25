@@ -38,9 +38,10 @@ class BattleLevel2(BattleBase):
 
         # Load custom platform, ground, and wall images
         self.custom_platform_img = pygame.image.load(os.path.join(bg_dir, "custom_platform_level2.png")).convert_alpha()
+        self.custom_platform_chunky = pygame.image.load(os.path.join(bg_dir, "custom_platform_chunky.png")).convert_alpha()
         self.custom_ground_img = pygame.image.load(os.path.join(bg_dir, "custom_ground_level2.png")).convert_alpha()
         self.custom_wall_img = pygame.image.load(os.path.join(bg_dir, "custom_wall_level2.png")).convert_alpha()
-        self.left_wall_img = pygame.transform.scale(self.custom_wall_img, (260, 500))
+        self.left_wall_img = pygame.transform.scale(self.custom_wall_img, (260, 608))
 
         self.cached_platforms = []
         for obj in self.ground_objects:
@@ -49,7 +50,11 @@ class BattleLevel2(BattleBase):
             w = int(obj["width"])
             h = int(obj["height"])
             if y < 450:
-                img = pygame.transform.scale(self.custom_platform_img, (w, h))
+                if x == 0:
+                    h_draw = int(w * 481 / 623)
+                    img = pygame.transform.scale(self.custom_platform_chunky, (w, h_draw))
+                else:
+                    img = pygame.transform.scale(self.custom_platform_img, (w, h))
             else:
                 if x < 32:
                     w += x
@@ -69,6 +74,8 @@ class BattleLevel2(BattleBase):
 
             if props.get("player") == "yes":
                 self.player = Knight(x, y, scale=0.35, speed=3, battle_base=self)
+                self.player.flip = True
+                self.player.direction = -1
                 self.player_group = pygame.sprite.Group(self.player)
             if props.get("enemy") == "yes":
                 move_area = pygame.Rect(x - 100, y - 50, 200, 100)
@@ -316,7 +323,7 @@ class BattleLevel2(BattleBase):
 
         # Large scenic pieces for level 2 only. These are visual backdrops; wall
         # collision still comes from the object layer in level2.tmx.
-        self.screen.blit(self.left_wall_img, (-22 - self.camera_offset[0], 100 - self.camera_offset[1]))
+        self.screen.blit(self.left_wall_img, (-22 - self.camera_offset[0], 0 - self.camera_offset[1]))
         self.screen.blit(self.BGDoor, (380 - self.camera_offset[0], -2 - self.camera_offset[1]))
 
         # Draw the custom platform, ground and wall images from cache
