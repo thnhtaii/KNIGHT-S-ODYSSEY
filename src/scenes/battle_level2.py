@@ -2,7 +2,7 @@ import pygame
 from src.scenes.battle_base import BattleBase
 from src.components.music_manager import MusicManager
 from src.entities.knight import Knight
-from src.entities.slime import Slime
+from src.entities.ice_wolf import IceWolf
 from src.ui.settings_menu import SettingsMenu
 from src.ui.game_over import GameOverScreen
 from src.components.level_manager import LevelLogicManager
@@ -19,8 +19,8 @@ class BattleLevel2(BattleBase):
         self.paused = False
         self.door_pos = None
         self.player = None
-        self.slime_list = []
-        self.logic_manager = LevelLogicManager(self.slime_list)
+        self.wolf_list = []
+        self.logic_manager = LevelLogicManager(self.wolf_list)
 
         current_dir = os.path.dirname(os.path.abspath(__file__))
         project_root = os.path.dirname(os.path.dirname(current_dir))
@@ -63,6 +63,10 @@ class BattleLevel2(BattleBase):
                 img = pygame.transform.scale(self.custom_ground_img, (w, h))
             self.cached_platforms.append((img, x, y))
 
+        # Tên thuật toán cho từng Ice Wolf
+        wolf_algo_names = ["wolf_astar", "wolf_greedy", "wolf_ida_star"]
+        wolf_count = 0
+
         for obj in self.spawn_objects:
             x = int(obj["x"])
             y = int(obj["y"])
@@ -77,20 +81,16 @@ class BattleLevel2(BattleBase):
                 self.player.direction = -1
                 self.player_group = pygame.sprite.Group(self.player)
             if props.get("enemy") == "yes":
-                move_area = pygame.Rect(x - 100, y - 50, 200, 100)
-                slime = Slime(x, y, 1.0, 2, self, move_area=move_area)
-                
-                if len(self.slime_list) == 0:
-                    slime.name = "slime_bfs"
-                elif len(self.slime_list) == 1:
-                    slime.name = "slime_andor"
-
-                self.slime_list.append(slime)
+                move_area = pygame.Rect(x - 150, y - 80, 300, 160)
+                wolf = IceWolf(x, y, 0.5, 2, self, move_area=move_area)
+                wolf.name = wolf_algo_names[wolf_count % len(wolf_algo_names)]
+                wolf_count += 1
+                self.wolf_list.append(wolf)
 
         if not self.player:
             raise ValueError("Không tìm thấy object 'player' trong map!")
 
-        self.enemy_group = pygame.sprite.Group(self.slime_list)
+        self.enemy_group = pygame.sprite.Group(self.wolf_list)
         self.moving_left = False
         self.moving_right = False
 
@@ -236,11 +236,11 @@ class BattleLevel2(BattleBase):
                                 50,
                                 self.player.rect.height + 20
                             )
-                            for slime in self.slime_list:
-                                if slime.alive and attack_range.colliderect(slime.rect):
-                                    print(f"Attack range: {attack_range}, Slime rect: {slime.rect}")
-                                    slime.check_alive()  # Chết ngay sau một lần đánh
-                                    print(f"[Slime] {slime.name} đã chết!")
+                            for wolf in self.wolf_list:
+                                if wolf.alive and attack_range.colliderect(wolf.rect):
+                                    print(f"Attack range: {attack_range}, Wolf rect: {wolf.rect}")
+                                    wolf.check_alive()  # Chết ngay sau một lần đánh
+                                    print(f"[IceWolf] {wolf.name} đã chết!")
                     else:
                         # Các hành động khác
                         if self.player.attack and self.player.in_air:
@@ -265,31 +265,33 @@ class BattleLevel2(BattleBase):
 
                 self.player.update_animation()
 
-                # Cập nhật slime
-                for slime in self.slime_list[:]:  # Sao chép danh sách để tránh lỗi khi xóa
-                    if slime.alive:
-                        if slime.name == "slime_bfs":
-                            slime.update_bfs(self.player, self.grid, self.margin_data)
-                        elif slime.name == "slime_andor":
-                            slime.update_andor(self.player, self.grid, self.margin_data)
+                # Cập nhật Ice Wolf
+                for wolf in self.wolf_list[:]:  # Sao chép danh sách để tránh lỗi khi xóa
+                    if wolf.alive:
+                        if wolf.name == "wolf_astar":
+                            wolf.update_astar(self.player, self.grid, self.margin_data)
+                        elif wolf.name == "wolf_greedy":
+                            wolf.update_greedy(self.player, self.grid, self.margin_data)
+                        elif wolf.name == "wolf_ida_star":
+                            wolf.update_ida_star(self.player, self.grid, self.margin_data)
                         else:
-                            slime.move()
-                        slime.try_attack_player(self.player)
+                            wolf.move()
+                        wolf.try_attack_player(self.player)
 
-                        if slime.in_air:
-                            slime.update_action(1)
+                        if wolf.in_air:
+                            wolf.update_action(1)
                         else:
-                            slime.update_action(0)
+                            wolf.update_action(0)
                     else:
-                        if slime.action != 3:
-                            slime.update_action(3)  # Đảm bảo chuyển sang Death
-                        slime.update_animation()
-                        if slime.frame_index >= len(slime.animation_list[3]) - 1:  # Đã hoàn thành animation Death
-                            self.slime_list.remove(slime)
-                            self.enemy_group.remove(slime)
-                            print(f"[Slime] {slime.name} đã được xóa!")
+                        if wolf.action != 3:
+                            wolf.update_action(3)  # Đảm bảo chuyển sang Die
+                        wolf.update_animation()
+                        if wolf.frame_index >= len(wolf.animation_list[3]) - 1:  # Đã hoàn thành animation Die
+                            self.wolf_list.remove(wolf)
+                            self.enemy_group.remove(wolf)
+                            print(f"[IceWolf] {wolf.name} đã được xóa!")
 
-                    slime.update_animation()
+                    wolf.update_animation()
 
             if not self.player.alive:
                 self.player_health = 0
@@ -336,15 +338,16 @@ class BattleLevel2(BattleBase):
             self.screen.blit(flipped_image, (sprite.rect.x - self.camera_offset[0], sprite.rect.y - self.camera_offset[1]))
 
         for sprite in self.enemy_group:
-            if sprite.alive or sprite.action == 3:  # Vẽ Slime sống hoặc đang trong trạng thái Death
+            if sprite.alive or sprite.action == 3:  # Vẽ Ice Wolf sống hoặc đang trong trạng thái Die
                 draw_x = sprite.rect.x - self.camera_offset[0]
                 draw_y = sprite.rect.y - self.camera_offset[1]
-                self.screen.blit(sprite.image, (draw_x, draw_y))
+                flipped = pygame.transform.flip(sprite.image, sprite.flip, False)
+                self.screen.blit(flipped, (draw_x, draw_y))
                 if sprite.alive:
-                    font = pygame.font.SysFont("Arial", 10, bold=True)
-                    algo_name = sprite.name.replace("slime_", "").upper()
-                    text_surface = font.render(algo_name, True, (255, 255, 255))
-                    text_rect = text_surface.get_rect(center=(draw_x + sprite.rect.width // 2, draw_y + sprite.rect.height // 2 + 2))
+                    font = pygame.font.SysFont("Arial", 12, bold=True)
+                    algo_name = sprite.name.replace("wolf_", "").upper()
+                    text_surface = font.render(algo_name, True, (100, 200, 255))
+                    text_rect = text_surface.get_rect(center=(draw_x + sprite.rect.width // 2, draw_y - 10))
                     self.screen.blit(text_surface, text_rect)
 
         self.health_bar.draw(self.screen)

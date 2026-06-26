@@ -190,6 +190,139 @@ def greedy_path(start, goal, grid):
     path.reverse()
     return path
 
+
+def astar_path(start, goal, grid):
+    """A* Search - sử dụng f(n) = g(n) + h(n) với Manhattan distance heuristic.
+    Đảm bảo tìm đường đi tối ưu (ngắn nhất)."""
+    rows, cols = len(grid), len(grid[0])
+
+    if not (0 <= start[0] < cols and 0 <= start[1] < rows and
+            0 <= goal[0] < cols and 0 <= goal[1] < rows):
+        return []
+
+    if start == goal:
+        return []
+
+    def heuristic(a, b):
+        return abs(a[0] - b[0]) + abs(a[1] - b[1])  # Manhattan distance
+
+    # Priority queue: (f_cost, g_cost, x, y)
+    open_set = [(heuristic(start, goal), 0, start[0], start[1])]
+    g_cost = {start: 0}
+    prev = {}
+    closed_set = set()
+
+    directions = [(0, 1), (1, 0), (0, -1), (-1, 0)]
+
+    while open_set:
+        f, g, x, y = heapq.heappop(open_set)
+        state = (x, y)
+
+        if state == goal:
+            break
+
+        if state in closed_set:
+            continue
+        closed_set.add(state)
+
+        for dx, dy in directions:
+            nx, ny = x + dx, y + dy
+            next_state = (nx, ny)
+
+            if (0 <= nx < cols and 0 <= ny < rows and
+                    grid[ny][nx] == 0 and next_state not in closed_set):
+                new_g = g + 1
+                if new_g < g_cost.get(next_state, float('inf')):
+                    g_cost[next_state] = new_g
+                    f_cost = new_g + heuristic(next_state, goal)
+                    prev[next_state] = state
+                    heapq.heappush(open_set, (f_cost, new_g, nx, ny))
+
+    if goal not in prev:
+        return []
+
+    path = []
+    at = goal
+    while at != start:
+        path.append(at)
+        at = prev.get(at)
+        if at is None:
+            return []
+    path.reverse()
+    return path
+
+
+def ida_star_path(start, goal, grid):
+    """IDA* (Iterative Deepening A*) - tìm kiếm sâu dần với ngưỡng f-cost.
+    Tiết kiệm bộ nhớ hơn A* nhưng vẫn đảm bảo tối ưu."""
+    rows, cols = len(grid), len(grid[0])
+
+    if not (0 <= start[0] < cols and 0 <= start[1] < rows and
+            0 <= goal[0] < cols and 0 <= goal[1] < rows):
+        return []
+
+    if start == goal:
+        return []
+
+    def heuristic(a, b):
+        return abs(a[0] - b[0]) + abs(a[1] - b[1])
+
+    directions = [(0, 1), (1, 0), (0, -1), (-1, 0)]
+
+    def search(path_stack, g, threshold):
+        """DFS với giới hạn f-cost threshold.
+        Returns: (found, min_f_exceeded)
+        """
+        node = path_stack[-1]
+        f = g + heuristic(node, goal)
+
+        if f > threshold:
+            return False, f
+
+        if node == goal:
+            return True, f
+
+        min_exceeded = float('inf')
+        x, y = node
+
+        for dx, dy in directions:
+            nx, ny = x + dx, y + dy
+            next_node = (nx, ny)
+
+            if (0 <= nx < cols and 0 <= ny < rows and
+                    grid[ny][nx] == 0 and next_node not in path_set):
+                path_stack.append(next_node)
+                path_set.add(next_node)
+
+                found, exceeded = search(path_stack, g + 1, threshold)
+                if found:
+                    return True, exceeded
+
+                if exceeded < min_exceeded:
+                    min_exceeded = exceeded
+
+                path_stack.pop()
+                path_set.remove(next_node)
+
+        return False, min_exceeded
+
+    threshold = heuristic(start, goal)
+    path_stack = [start]
+    path_set = {start}
+    max_iterations = 200  # Giới hạn để tránh treo game
+
+    for _ in range(max_iterations):
+        found, new_threshold = search(path_stack, 0, threshold)
+        if found:
+            # path_stack chứa đường đi từ start đến goal
+            return list(path_stack[1:])  # Bỏ start, giữ goal
+        if new_threshold == float('inf'):
+            return []  # Không tìm được đường
+        threshold = new_threshold
+
+    return []  # Hết iterations
+
+
 def hill_climb_step(current, goal, grid):
     rows, cols = len(grid), len(grid[0])
     cx, cy = current
