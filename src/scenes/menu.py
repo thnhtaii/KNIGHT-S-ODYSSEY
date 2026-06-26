@@ -21,6 +21,7 @@ class Menu:
             {"id": 2, "unlocked": False},
             {"id": 3, "unlocked": False},
             {"id": 4, "unlocked": False},
+            {"id": 5, "unlocked": True},
         ]
         if unlocked_levels:
             for level in self.levels:
@@ -55,7 +56,7 @@ class Menu:
     def create_buttons(self):
         button_w, button_h = 140, 140
         gap = 20
-        grid_cols, grid_rows = 2, 2
+        grid_cols, grid_rows = 3, 2
 
         total_width = grid_cols * button_w + (grid_cols - 1) * gap
         total_height = grid_rows * button_h + (grid_rows - 1) * gap
@@ -64,7 +65,7 @@ class Menu:
         start_y = (self.WINDOW_HEIGHT - total_height) // 2
 
         self.buttons.clear()
-        for i in range(grid_cols * grid_rows):
+        for i in range(len(self.levels)):
             col = i % grid_cols
             row = i // grid_cols
             x = start_x + col * (button_w + gap)

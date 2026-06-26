@@ -9,7 +9,8 @@ from src.scenes.battle_level1 import BattleLevel1
 from src.scenes.battle_level2 import BattleLevel2
 from src.scenes.battle_level3 import BattleLevel3
 from src.scenes.battle_boss import BattleBoss
-from src.ui.health_bar import HealthBar  
+from src.scenes.battle_level5 import BattleLevel5
+from src.ui.health_bar import HealthBar
 
 
 def main():
@@ -63,6 +64,20 @@ def main():
             if result == "win":
                 if 4 not in unlocked_levels:
                     unlocked_levels.append(4)
+                current_scene = "menu"
+            elif result == "menu":
+                current_scene = "menu"
+            elif result == "quit":
+                current_scene = "quit"
+            else:
+                current_scene = result
+
+        elif current_scene == "level5":
+            battle = BattleLevel5(screen, health_bar, player_health)
+            result = battle.run()
+            if result == "win":
+                if 5 not in unlocked_levels:
+                    unlocked_levels.append(5)
                 current_scene = "menu"
             elif result == "menu":
                 current_scene = "menu"
