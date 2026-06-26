@@ -1,14 +1,14 @@
 """
-Script to cut Ice Wolf sprite sheet into individual frames.
-Sprite sheet: 1024 x 885 pixels
-Detected layout:
-  IDLE:   4 frames, y=[28,164]
-  WALK:   5 frames, y=[168,297] (not 4!)
-  RUN:    6 frames, y=[300,429] (not 4!)
-  ATTACK: 5 frames, y=[435,557]
-  JUMP:   3 frames, y=[560,689] (left portion)
-  HURT:   2 frames, y=[560,689] (right portion)
-  DIE:    5 frames, y=[775,860] (lower sub-row)
+Script to cut the new White Wolf sprite sheet into individual frames.
+New sprite sheet: 1024 x 430 pixels, RGBA.
+Layout:
+  IDLE:   4 frames, y=[56,117], x in [14, 128], [128, 242], [278, 386], [398, 507]
+  WALK:   4 frames, y=[56,117], x in [534, 647], [647, 760], [772, 879], [893, 999]
+  RUN:    4 frames, y=[155,226], x in [21, 129], [140, 248], [263, 372], [383, 496]
+  JUMP:   4 frames, y=[155,226], x in [496, 609], [651, 757], [769, 881], [881, 994]
+  ATTACK: 4 frames, y=[250,330], x in [18, 127], [138, 254], [254, 371], [382, 495]
+  HURT:   2 frames, y=[330,422], x in [14, 114], [114, 250]
+  DIE:    3 frames, y=[330,422], x in [280, 386], [423, 590], [590, 778]
 """
 
 from PIL import Image
@@ -17,114 +17,102 @@ import numpy as np
 
 def cut_sprites():
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    sheet_path = os.path.join(script_dir, 'assets', 'sprites', 'ice_wolf', 'spritesheet.jpg')
+    sheet_path = os.path.join(script_dir, 'assets', 'sprites', 'ice_wolf', 'spritesheet.png')
     output_base = os.path.join(script_dir, 'assets', 'sprites', 'ice_wolf')
 
     sheet = Image.open(sheet_path).convert("RGBA")
     w, h = sheet.size
-    print(f"Sprite sheet size: {w}x{h}")
+    print(f"New Sprite sheet size: {w}x{h}")
 
-    # Precise frame positions measured from pixel analysis
-    # Format: anim_name -> list of (x1, y1, x2, y2) bounding boxes with padding
-    PAD = 8  # Padding around detected sprites
-    
     animations = {
         'idle': [
-            (21-PAD, 28-PAD, 153+PAD, 164+PAD),
-            (163-PAD, 28-PAD, 317+PAD, 164+PAD),
-            (328-PAD, 28-PAD, 454+PAD, 164+PAD),
-            (467-PAD, 28-PAD, 613+PAD, 164+PAD),
+            (14, 56, 128, 117),
+            (128, 56, 242, 117),
+            (278, 56, 386, 117),
+            (398, 56, 507, 117)
         ],
         'walk': [
-            (21-PAD, 168-PAD, 167+PAD, 297+PAD),
-            (186-PAD, 168-PAD, 335+PAD, 297+PAD),
-            (348-PAD, 168-PAD, 497+PAD, 297+PAD),
-            (511-PAD, 168-PAD, 654+PAD, 297+PAD),
-            (670-PAD, 168-PAD, 814+PAD, 297+PAD),
+            (534, 56, 647, 117),
+            (647, 56, 760, 117),
+            (772, 56, 879, 117),
+            (893, 56, 999, 117)
         ],
         'run': [
-            (21-PAD, 300-PAD, 168+PAD, 429+PAD),
-            (186-PAD, 300-PAD, 337+PAD, 429+PAD),
-            (354-PAD, 300-PAD, 504+PAD, 429+PAD),
-            (521-PAD, 300-PAD, 670+PAD, 429+PAD),
-            (687-PAD, 300-PAD, 836+PAD, 429+PAD),
-            (856-PAD, 300-PAD, 1007+PAD, 429+PAD),
-        ],
-        'attack': [
-            (20-PAD, 435-PAD, 177+PAD, 557+PAD),
-            (208-PAD, 435-PAD, 408+PAD, 557+PAD),
-            (423-PAD, 435-PAD, 563+PAD, 557+PAD),
-            (576-PAD, 435-PAD, 731+PAD, 557+PAD),
-            (761-PAD, 435-PAD, 858+PAD, 557+PAD),
+            (21, 155, 129, 226),
+            (140, 155, 248, 226),
+            (263, 155, 372, 226),
+            (383, 155, 496, 226)
         ],
         'jump': [
-            (30-PAD, 560-PAD, 164+PAD, 689+PAD),
-            (184-PAD, 560-PAD, 365+PAD, 689+PAD),
-            (387-PAD, 560-PAD, 498+PAD, 689+PAD),
+            (496, 155, 609, 226),
+            (651, 155, 757, 226),
+            (769, 155, 881, 226),
+            (881, 155, 994, 226)
+        ],
+        'attack': [
+            (18, 250, 127, 330),
+            (138, 250, 254, 330),
+            (254, 250, 371, 330),
+            (382, 250, 495, 330)
         ],
         'hurt': [
-            (598-PAD, 560-PAD, 762+PAD, 689+PAD),
-            (782-PAD, 560-PAD, 885+PAD, 689+PAD),
+            (14, 352, 114, 411),
+            (114, 352, 250, 411)
         ],
         'die': [
-            # Die sprites are in lower portion, y ~ 775-860
-            (20-PAD, 770-PAD, 190+PAD, 860+PAD),
-            (214-PAD, 770-PAD, 385+PAD, 860+PAD),
-            (409-PAD, 770-PAD, 575+PAD, 860+PAD),
-            (575-PAD, 770-PAD, 735+PAD, 860+PAD),
-            # Skip portrait frame (852+, bottom right)
-        ],
+            (280, 352, 386, 411),
+            (423, 352, 590, 411),
+            (590, 352, 778, 411)
+        ]
     }
     
+    # We will first clear existing pngs in these directories to avoid mixing old and new sprites
+    for anim_name in animations.keys():
+        anim_dir = os.path.join(output_base, anim_name)
+        if os.path.exists(anim_dir):
+            for file in os.listdir(anim_dir):
+                if file.endswith('.png'):
+                    os.remove(os.path.join(anim_dir, file))
+        os.makedirs(anim_dir, exist_ok=True)
+        
     for anim_name, frames in animations.items():
         out_dir = os.path.join(output_base, anim_name)
-        os.makedirs(out_dir, exist_ok=True)
         
         for i, (x1, y1, x2, y2) in enumerate(frames):
-            # Clamp to image bounds
-            x1 = max(0, x1)
-            y1 = max(0, y1)
-            x2 = min(w, x2)
-            y2 = min(h, y2)
-            
             frame = sheet.crop((x1, y1, x2, y2))
             frame = remove_checkered_bg(frame)
             frame = trim_transparent(frame)
-            
-            if frame.size[0] < 15 or frame.size[1] < 15:
-                print(f"  WARNING: {anim_name}/{i} too small ({frame.size}), using untrimmed")
-                frame = sheet.crop((x1, y1, x2, y2))
-                frame = remove_checkered_bg(frame)
             
             filename = f"{anim_name.capitalize()}_{i}.png"
             frame.save(os.path.join(out_dir, filename))
             print(f"  Saved {anim_name}/{filename} ({frame.size[0]}x{frame.size[1]})")
 
-    # Clean up debug files
-    debug_path = os.path.join(output_base, 'die_row_debug.png')
-    if os.path.exists(debug_path):
-        os.remove(debug_path)
-    
-    print("\nDone cutting sprites!")
+    print("\nDone cutting new sprites!")
 
 
 def remove_checkered_bg(img):
-    """Remove the blue-gray checkered background."""
+    """Remove the blue-gray checkered background of the new sprite sheet."""
     data = np.array(img)
     r = data[:,:,0].astype(int)
     g = data[:,:,1].astype(int)  
     b = data[:,:,2].astype(int)
     
-    tol = 28
+    # Tolerance for checkerboard color matching
+    tol = 18
     
-    # Light checker: ~(148, 164, 179)
-    light = (np.abs(r - 148) < tol) & (np.abs(g - 164) < tol) & (np.abs(b - 179) < tol)
-    # Dark checker: ~(124, 140, 155)
-    dark = (np.abs(r - 124) < tol) & (np.abs(g - 140) < tol) & (np.abs(b - 155) < tol)
-    # White
-    white = (r > 230) & (g > 230) & (b > 230)
+    # Light checker: ~(146, 160, 171)
+    light = (np.abs(r - 146) < tol) & (np.abs(g - 160) < tol) & (np.abs(b - 171) < tol)
+    # Dark checker: ~(120, 136, 149)
+    dark = (np.abs(r - 120) < tol) & (np.abs(g - 136) < tol) & (np.abs(b - 149) < tol)
+    # Background top bar/border matching: (64, 82, 94)
+    border = (np.abs(r - 64) < tol) & (np.abs(g - 82) < tol) & (np.abs(b - 94) < tol)
+    # White / text matching
+    white = (r > 220) & (g > 220) & (b > 220)
     
-    bg_mask = light | dark | white
+    # Combine background masks
+    # Keep wolf pixels that might overlap white by checking if they are not surrounded by blue-gray
+    bg_mask = light | dark | border | white
+    
     data[bg_mask, 3] = 0
     
     return Image.fromarray(data)
