@@ -2,16 +2,16 @@ import pygame
 from src.scenes.battle_base import BattleBase
 from src.components.music_manager import MusicManager
 from src.entities.knight import Knight
-from src.entities.soldier import Soldier
+from src.entities.zombie import Zombie
 from src.ui.settings_menu import SettingsMenu
 from src.ui.game_over import GameOverScreen
 from src.components.level_manager import LevelLogicManager
 from src.ui.game_victory import GameVictoryScreen
 import os
 
-class BattleLevel3(BattleBase):
+class BattleLevel4(BattleBase):
     def __init__(self, screen, health_bar, player_health):
-        super().__init__(screen, level_name="level3")
+        super().__init__(screen, level_name="level4")
         self.screen = screen
         self.health_bar = health_bar
         self.player_health = player_health
@@ -19,7 +19,7 @@ class BattleLevel3(BattleBase):
         self.paused = False
         self.door_pos = None
         self.player = None
-        self.slime_list = [] # Lưu binh sĩ để LevelLogicManager tương thích
+        self.slime_list = []  # Lưu zombie để LevelLogicManager tương thích
         self.logic_manager = LevelLogicManager(self.slime_list)
 
         current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -48,30 +48,24 @@ class BattleLevel3(BattleBase):
                 self.player_group = pygame.sprite.Group(self.player)
                 
             if props.get("enemy") == "yes":
-                algo_name = props.get("algo", "hill_climb")
-                # Xác định vùng di chuyển (move_area) dựa trên độ cao spawn và vị trí x
-                if y < 250:  # Tầng 3 (y=224)
-                    if x < 400:  # Left Top Floor
-                        move_area = pygame.Rect(16, y - 50, 224, 100)
-                    else:        # Right Top Floor (nếu có)
-                        move_area = pygame.Rect(720, y - 50, 64, 100)
-                elif y < 400:  # Tầng 2 (y=320 hoặc y=368)
-                    if x < 450:  # Left Mid-floor (y=320)
-                        move_area = pygame.Rect(288, y - 50, 112, 100)
-                    else:        # Right Mid-floor (y=368)
-                        move_area = pygame.Rect(576, y - 50, 112, 100)
-                else:  # Tầng 1 (y=528)
-                    if x < 400:  # Bottom Left Floor
-                        move_area = pygame.Rect(16, y - 50, 304, 100)
-                    else:        # Bottom Right Floor
-                        move_area = pygame.Rect(480, y - 50, 304, 100)
+                algo_name = props.get("algo", "bfs")
+                # Xác định vùng di chuyển (move_area) dựa trên độ cao spawn
+                if y < 250:  # Tầng 3
+                    if x < 600:
+                        move_area = pygame.Rect(16, y - 50, 368, 100)
+                    else:
+                        move_area = pygame.Rect(896, y - 50, 368, 100)
+                elif y < 400:  # Tầng 2 (Giữa)
+                    move_area = pygame.Rect(320, y - 50, 640, 100)
+                else:  # Tầng 1 (Đất nền)
+                    move_area = pygame.Rect(16, y - 50, 1248, 100)
                 
-                soldier = Soldier(x, y, scale=0.5, speed=2, battle_base=self, move_area=move_area)
-                soldier.name = f"soldier_{algo_name}"
-                self.slime_list.append(soldier)
+                zombie = Zombie(x, y, scale=0.35, speed=1.5, battle_base=self, move_area=move_area)
+                zombie.name = f"zombie_{algo_name}"
+                self.slime_list.append(zombie)
 
         if not self.player:
-            raise ValueError("Không tìm thấy object 'player' trong map Màn 3!")
+            raise ValueError("Không tìm thấy object 'player' trong map Màn 4!")
 
         self.enemy_group = pygame.sprite.Group(self.slime_list)
         self.moving_left = False
@@ -111,14 +105,24 @@ class BattleLevel3(BattleBase):
             if ground_idx < len(self.tile_layers_visibility):
                 self.tile_layers_visibility[ground_idx] = False
 
-        # Tải ảnh custom cho Màn 3
+        # Tải ảnh custom cho Màn 4
         bg_dir = os.path.join(project_root, 'assets', 'backgrounds')
-        self.custom_platform_img = pygame.image.load(os.path.join(bg_dir, "level3_platform.png")).convert_alpha()
-        self.custom_ground_img = pygame.image.load(os.path.join(bg_dir, "level3_ground.png")).convert_alpha()
+        self.custom_platform_img = pygame.image.load(os.path.join(bg_dir, "level4_platform.png")).convert_alpha()
+        self.custom_ground_img = pygame.image.load(os.path.join(bg_dir, "level4_ground.png")).convert_alpha()
 
         self.cached_platforms = []
         map_width_px = self.map_width * self.tile_width
-        for obj in self.ground_objects:
+
+        # Thu thập cả ground_objects và wall_objects (trừ biên bản đồ) làm thanh nhảy
+        platforms_to_process = list(self.ground_objects)
+        for wall in self.wall_objects:
+            wx = int(wall["x"])
+            wy = int(wall["y"])
+            # Lọc bỏ các bức tường biên (trái x=0, phải x sát lề, trần y=0)
+            if wx > 0 and wx < map_width_px - 16 and wy > 0:
+                platforms_to_process.append(wall)
+
+        for obj in platforms_to_process:
             x = int(obj["x"])
             y = int(obj["y"])
             w = int(obj["width"])
@@ -135,6 +139,28 @@ class BattleLevel3(BattleBase):
                     w = map_width_px - x
                 img = self.create_tiled_surface(self.custom_ground_img, w, h)
             self.cached_platforms.append((img, x, y))
+
+        # Các thuộc tính âm thanh và Belief State phục vụ Màn 4
+        self.player_beliefs = set()
+        self.sound_radius = 0
+        self.sound_pos = None
+        self.last_sound_ticks = 0
+        self.fog_alpha = 180
+        
+        px = self.player.rect.centerx // self.tile_width
+        py = self.player.rect.centery // self.tile_height
+        self.player_beliefs.add((px, py))
+
+        # Tải và co giãn ảnh nền theo kích thước toàn bản đồ
+        bg_filename = f"{self.level_name}.jpg"
+        bg_path = os.path.join(project_root, "assets", "backgrounds", bg_filename)
+        if os.path.exists(bg_path):
+            raw_bg = pygame.image.load(bg_path).convert()
+            bg_w = max(self.map_width * self.tile_width, self.screen_width)
+            bg_h = max(self.map_height * self.tile_height, self.screen_height)
+            self.custom_bg = pygame.transform.scale(raw_bg, (bg_w, bg_h))
+        else:
+            self.custom_bg = None
 
     def create_tiled_surface(self, tile_img, w, h):
         """Tạo một Surface lặp lại (tiled) từ tile_img sắc nét."""
@@ -222,12 +248,13 @@ class BattleLevel3(BattleBase):
                             continue
 
             if self.player.alive and not self.paused:
+                self.update_player_beliefs()
                 self.player.move(self.moving_left, self.moving_right)
                 map_height_px = self.map_height * self.tile_height
                 if self.player.rect.top > map_height_px:
                     self.player.health = 0
                     self.player.check_alive()
-                    print("[Knight] Rơi khỏi bản đồ Màn 3!")
+                    print("[Knight] Rơi khỏi bản đồ Màn 4!")
 
                 # Cập nhật camera
                 map_width_px = self.map_width * self.tile_width
@@ -256,7 +283,7 @@ class BattleLevel3(BattleBase):
                             )
                             for slime in self.slime_list:
                                 if slime.alive and attack_range.colliderect(slime.rect):
-                                    slime.check_alive() # Tiêu diệt binh sĩ ngay
+                                    slime.check_alive()  # Tiêu diệt zombie
                     else:
                         if self.player.attack and self.player.in_air:
                             self.player.update_action(10)
@@ -280,17 +307,28 @@ class BattleLevel3(BattleBase):
 
                 self.player.update_animation()
 
-                # Cập nhật chuyển động của binh sĩ (Soldier)
+                # Cập nhật chuyển động của zombie (Zombie)
                 for slime in self.slime_list[:]:
                     if slime.alive:
-                        if "hill_climb" in slime.name:
-                            slime.update_hill_climb(self.player, self.grid, self.margin_data)
-                        elif "simulated_annealing" in slime.name:
-                            slime.update_simulated_annealing(self.player, self.grid, self.margin_data)
-                        elif "local_beam" in slime.name:
-                            slime.update_local_beam(self.player, self.grid, self.margin_data)
+                        if slime.rect.colliderect(self.player.rect):
+                            if slime.action not in [2, 3, 4]:
+                                slime.update_action(0)
                         else:
-                            slime.move()
+                            # Hủy đòn đánh đang dang dở để di chuyển đuổi theo ngay lập tức
+                            if slime.action == 4:
+                                slime.action = 0
+                                slime.frame_index = 0
+                             
+                            if "and_or_search" in slime.name:
+                                slime.update_andor(self.player, self.grid, self.margin_data)
+                            elif "belief_state_and_goal" in slime.name:
+                                slime.update_belief_state_and_goal(self.player, self.grid, self.margin_data)
+                            elif "belief_state" in slime.name:
+                                slime.update_belief_state(self.player, self.grid, self.margin_data)
+                            elif "bfs" in slime.name:
+                                slime.update_bfs(self.player, self.grid, self.margin_data)
+                            else:
+                                slime.move()
                             
                         slime.try_attack_player(self.player)
                     else:
@@ -300,7 +338,7 @@ class BattleLevel3(BattleBase):
                         if getattr(slime, 'death_animation_complete', False) or slime.frame_index >= len(slime.animation_list[3]) - 1:
                             self.slime_list.remove(slime)
                             self.enemy_group.remove(slime)
-                            print(f"[Soldier] {slime.name} đã được dọn dẹp!")
+                            print(f"[Zombie] {slime.name} đã được dọn dẹp!")
 
                     slime.update_animation()
 
@@ -323,16 +361,98 @@ class BattleLevel3(BattleBase):
             pygame.display.flip()
             clock.tick(60)
 
-    def draw(self):
-        self.screen.fill((0, 0, 0))
-        bg_filename = f"{self.level_name}.jpg"
-        bg_path = os.path.join(self.project_root, "assets", "backgrounds", bg_filename)
-        if os.path.exists(bg_path):
-            bg = pygame.image.load(bg_path).convert()
-            bg = pygame.transform.scale(bg, (self.screen_width, self.screen_height))
-            self.screen.blit(bg, (-self.camera_offset[0], -self.camera_offset[1]))
+    def update_player_beliefs(self):
+        current_time = pygame.time.get_ticks()
+        px = self.player.rect.centerx // self.tile_width
+        py = self.player.rect.centery // self.tile_height
+        
+        self.sound_radius = 0
+        self.sound_pos = None
+        
+        # 0: Idle, 1: Walk/Run, 2: Jump, 3: Attack, 6: Crouch, 7: Dash, 10: Jump attack
+        if self.player.action == 1: # Chạy
+            self.sound_radius = 96 # 6 ô
+            self.sound_pos = self.player.rect.center
+            self.last_sound_ticks = current_time
+        elif self.player.action in [2, 3, 10]: # Nhảy/Tấn công
+            self.sound_radius = 192 # 12 ô
+            self.sound_pos = self.player.rect.center
+            self.last_sound_ticks = current_time
+        elif self.player.action == 6: # Đi khom người rón rén
+            self.sound_radius = 0
+            self.sound_pos = None
             
+        # Cập nhật Belief State của Player
+        if self.sound_radius > 0:
+            self.player_beliefs = {(px, py)}
+        else:
+            if not hasattr(self, 'diffusion_counter'):
+                self.diffusion_counter = 0
+            self.diffusion_counter += 1
+            if self.diffusion_counter >= 60:
+                self.diffusion_counter = 0
+                new_beliefs = set(self.player_beliefs)
+                for tx, ty in self.player_beliefs:
+                    for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+                        nx, ny = tx + dx, ty + dy
+                        if 0 <= nx < self.map_width and 0 <= ny < self.map_height and self.grid[ny][nx] == 0:
+                            new_beliefs.add((nx, ny))
+                if len(new_beliefs) <= 30:
+                    self.player_beliefs = new_beliefs
+
+    def draw_dark_fog(self):
+        fog_surf = pygame.Surface((self.screen_width, self.screen_height), pygame.SRCALPHA)
+        fog_surf.fill((10, 10, 15, self.fog_alpha))
+        
+        torch_radius = 80
+        player_screen_x = self.player.rect.centerx - self.camera_offset[0]
+        player_screen_y = self.player.rect.centery - self.camera_offset[1]
+        
+        for r in range(torch_radius, 0, -4):
+            alpha = int(self.fog_alpha * (r / torch_radius))
+            pygame.draw.circle(fog_surf, (10, 10, 15, alpha), (player_screen_x, player_screen_y), r)
+            
+        self.screen.blit(fog_surf, (0, 0))
+        
+        # Vẽ sóng âm
+        if self.sound_radius > 0 and pygame.time.get_ticks() - self.last_sound_ticks < 300:
+            ticks_elapsed = pygame.time.get_ticks() - self.last_sound_ticks
+            scale_ratio = ticks_elapsed / 300
+            current_wave_radius = int(self.sound_radius * scale_ratio)
+            wave_alpha = int(120 * (1.0 - scale_ratio))
+            
+            wave_surf = pygame.Surface((self.screen_width, self.screen_height), pygame.SRCALPHA)
+            pygame.draw.circle(wave_surf, (0, 191, 255, wave_alpha), (player_screen_x, player_screen_y), current_wave_radius, 2)
+            self.screen.blit(wave_surf, (0, 0))
+
+    def draw(self):
+        if self.custom_bg:
+            self.screen.blit(self.custom_bg, (-self.camera_offset[0], -self.camera_offset[1]))
+        else:
+            self.screen.fill((0, 0, 0))
+
+        class ScreenProxy:
+            def __init__(self, real_screen):
+                self.real_screen = real_screen
+            def fill(self, color, rect=None, special_flags=0):
+                pass
+            def blit(self, source, dest, area=None, special_flags=0):
+                self.real_screen.blit(source, dest, area, special_flags)
+            def get_width(self):
+                return self.real_screen.get_width()
+            def get_height(self):
+                return self.real_screen.get_height()
+
+        orig_screen = self.screen
+        orig_level_name = self.level_name
+
+        self.screen = ScreenProxy(orig_screen)
+        self.level_name = "non_existent_level_to_skip_bg_draw"
+
         super().draw(self.camera_offset)
+
+        self.screen = orig_screen
+        self.level_name = orig_level_name
 
         # Vẽ các platform và ground custom từ cache (đã xếp lát sắc nét)
         for img, x, y in self.cached_platforms:
@@ -346,6 +466,11 @@ class BattleLevel3(BattleBase):
             door_y = self.door_pos[1] - self.BGDoor.get_height() - self.camera_offset[1]
             self.screen.blit(self.BGDoor, (door_x, door_y))
 
+        # Vẽ các Belief State dưới nhân vật
+        for sprite in self.enemy_group:
+            if hasattr(sprite, 'draw_belief_state'):
+                sprite.draw_belief_state(self.screen, self.camera_offset)
+
         for sprite in self.player_group:
             flipped_image = pygame.transform.flip(sprite.image, sprite.flip, False)
             self.screen.blit(flipped_image, (sprite.rect.x - self.camera_offset[0], sprite.rect.y - self.camera_offset[1]))
@@ -356,14 +481,27 @@ class BattleLevel3(BattleBase):
                 draw_y = sprite.rect.y - self.camera_offset[1]
                 self.screen.blit(pygame.transform.flip(sprite.image, sprite.flip, False), (draw_x, draw_y))
                 
-                # Hiển thị tên thuật toán viết hoa nổi trên đầu mỗi binh sĩ
+                # Hiển thị tên thuật toán viết hoa nổi trên đầu mỗi Zombie
                 if sprite.alive:
                     font = pygame.font.SysFont("Arial", 10, bold=True)
-                    algo_name = sprite.name.replace("soldier_", "").replace("_", " ").upper()
-                    text_surface = font.render(algo_name, True, (255, 255, 255))
+                    algo_name = sprite.name.replace("zombie_", "").replace("_", " ").upper()
+                    
+                    state_suffix = ""
+                    if "belief_state_and_goal" in sprite.name:
+                        if self.sound_radius == 0:
+                            state_suffix = " [?]"
+                        else:
+                            state_suffix = " [!]"
+                    elif "belief_state" in sprite.name and not sprite.is_calibrated:
+                        state_suffix = " [CALIBRATING]"
+                        
+                    text_surface = font.render(algo_name + state_suffix, True, (0, 255, 0))
                     text_surface.set_alpha(150)
                     text_rect = text_surface.get_rect(center=(draw_x + sprite.rect.width // 2, draw_y - 12))
                     self.screen.blit(text_surface, text_rect)
+
+        # Vẽ sương mù bóng tối che phủ
+        self.draw_dark_fog()
 
         self.health_bar.draw(self.screen)
 

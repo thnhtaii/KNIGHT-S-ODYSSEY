@@ -474,4 +474,184 @@ def local_beam_path(start, goal, grid, k=3):
     
     if path and path[0] == start:
         return path
-    return []
+    return []
+
+
+def and_or_graph_search(start, goal, grid):
+    rows, cols = len(grid), len(grid[0])
+    explored = set()
+    
+    def goal_test(state):
+        return state == goal
+        
+    def actions(state):
+        return [(-1, 0), (1, 0), (0, -1), (0, 1)] # LEFT, RIGHT, UP, DOWN
+        
+    def results(state, action):
+        x, y = state
+        dx, dy = action
+        intended = (x + dx, y + dy)
+        side = (x + dy, y + dx) # Di chuyển chệch hướng vuông góc do trượt
+        
+        outcomes = []
+        for nx, ny in [intended, side]:
+            if 0 <= nx < cols and 0 <= ny < rows and grid[ny][nx] == 0:
+                outcomes.append((nx, ny))
+            else:
+                outcomes.append(state) # Chạm tường đứng yên
+        return list(set(outcomes))
+        
+    def or_search(state, path):
+        if goal_test(state):
+            return []
+        if state in path:
+            return "failure"
+        if state in explored:
+            return "failure"
+        explored.add(state)
+            
+        for action in actions(state):
+            result_states = results(state, action)
+            plan = and_search(result_states, path + [state])
+            if plan != "failure":
+                return [action, plan]
+        return "failure"
+        
+    def and_search(states, path):
+        plans = {}
+        for s in states:
+            plan_s = or_search(s, path)
+            if plan_s == "failure":
+                return "failure"
+            plans[s] = plan_s
+        return plans
+
+    plan = or_search(start, [])
+    return plan if plan != "failure" else []
+
+
+def belief_a_star(start1, start2, goal, grid):
+    import heapq
+    
+    def manhattan(state, goal):
+        return abs(state[0] - goal[0]) + abs(state[1] - goal[1])
+
+    def result(state, action):
+        x, y = state
+        dx, dy = action
+        nx, ny = x + dx, y + dy
+        if 0 <= nx < len(grid[0]) and 0 <= ny < len(grid) and grid[ny][nx] == 0:
+            return (nx, ny)
+        return state
+
+    start_node = (start1, start2)
+    frontier = []
+    
+    g_score = {start_node: 0}
+    h_start = (manhattan(start1, goal) + manhattan(start2, goal)) / 2
+    f_start = h_start
+    
+    counter = 0
+    heapq.heappush(frontier, (f_start, g_score[start_node], counter, start_node, []))
+    
+    reached = {start_node}
+    actions = [(-1, 0), (1, 0), (0, -1), (0, 1)] # LEFT, RIGHT, UP, DOWN
+    
+    while frontier:
+        f_val, g_val, _, current, path = heapq.heappop(frontier)
+        s1, s2 = current
+        
+        if s1 == goal and s2 == goal:
+            return path
+            
+        for action in actions:
+            if s1 != goal:
+                ns1 = result(s1, action)
+            else:
+                ns1 = s1
+                
+            if s2 != goal:
+                ns2 = result(s2, action)
+            else:
+                ns2 = s2
+                
+            child = (ns1, ns2)
+            child_g = g_val + 1
+            
+            if child not in reached or child_g < g_score.get(child, float('inf')):
+                g_score[child] = child_g
+                h_child = (manhattan(ns1, goal) + manhattan(ns2, goal)) / 2
+                f_child = child_g + h_child
+                counter += 1
+                heapq.heappush(frontier, (f_child, child_g, counter, child, path + [action]))
+                reached.add(child)
+                
+    return [] # failure
+
+
+def belief_a_star_goals(start1, start2, goals, grid):
+    import heapq
+    
+    def min_manhattan(state, goals):
+        return min(abs(state[0] - g[0]) + abs(state[1] - g[1]) for g in goals)
+
+    def result(state, action):
+        x, y = state
+        dx, dy = action
+        nx, ny = x + dx, y + dy
+        if 0 <= nx < len(grid[0]) and 0 <= ny < len(grid) and grid[ny][nx] == 0:
+            return (nx, ny)
+        return state
+
+    start_node = (start1, start2)
+    frontier = []
+    
+    g_score = {start_node: 0}
+    h_start = (min_manhattan(start1, goals) + min_manhattan(start2, goals)) / 2
+    f_start = h_start
+    
+    counter = 0
+    heapq.heappush(frontier, (f_start, g_score[start_node], counter, start_node, []))
+    
+    reached = {start_node}
+    actions = [(-1, 0), (1, 0), (0, -1), (0, 1)] # LEFT, RIGHT, UP, DOWN
+    
+    while frontier:
+        f_val, g_val, _, current, path = heapq.heappop(frontier)
+        s1, s2 = current
+        
+        if s1 in goals and s2 in goals:
+            return path
+            
+        for action in actions:
+            if s1 in goals:
+                ns1 = s1
+            else:
+                ns1 = result(s1, action)
+                
+            if s2 in goals:
+                ns2 = s2
+            else:
+                ns2 = result(s2, action)
+                
+            child = (ns1, ns2)
+            child_g = g_val + 1
+            
+            if child not in reached or child_g < g_score.get(child, float('inf')):
+                g_score[child] = child_g
+                h_child = (min_manhattan(ns1, goals) + min_manhattan(ns2, goals)) / 2
+                f_child = child_g + h_child
+                counter += 1
+                heapq.heappush(frontier, (f_child, child_g, counter, child, path + [action]))
+                reached.add(child)
+                
+    return [] # failure
+
+
+def result(state, action, grid):
+    x, y = state
+    dx, dy = action
+    nx, ny = x + dx, y + dy
+    if 0 <= nx < len(grid[0]) and 0 <= ny < len(grid) and grid[ny][nx] == 0:
+        return (nx, ny)
+    return state

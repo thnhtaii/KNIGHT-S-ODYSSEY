@@ -8,6 +8,7 @@ from src.scenes.menu import Menu
 from src.scenes.battle_level1 import BattleLevel1
 from src.scenes.battle_level2 import BattleLevel2
 from src.scenes.battle_level3 import BattleLevel3
+from src.scenes.battle_level4 import BattleLevel4
 from src.scenes.battle_boss import BattleBoss
 from src.ui.health_bar import HealthBar  
 
@@ -18,9 +19,9 @@ def main():
     screen = pygame.display.set_mode((800, 608))
     pygame.display.set_caption("STICKY MAN")
 
-    # Khởi tạo thanh máu và danh sách màn mở khóa
+    # Khởi tạo thanh máu và danh sách màn mở khóa (mở khóa sẵn cả 4 màn để test)
     player_health = 100
-    unlocked_levels = [1]  # Chỉ mở khóa level 1 ban đầu
+    unlocked_levels = [1, 2, 3, 4]  # Mở khóa sẵn cả 4 màn để test
     health_bar = HealthBar(20, 20, 140, 20, player_health)
 
     current_scene = "background"
@@ -63,6 +64,19 @@ def main():
             if result == "win":
                 if 4 not in unlocked_levels:
                     unlocked_levels.append(4)
+                current_scene = "menu"
+            elif result == "menu":
+                current_scene = "menu"
+            elif result == "quit":
+                current_scene = "quit"
+            else:
+                current_scene = result
+
+        elif current_scene == "level4":
+            battle = BattleLevel4(screen, health_bar, player_health)
+            result = battle.run()
+            if result == "win":
+                # Không cần mở khóa level mới vì Level 4 là màn cuối hiện tại
                 current_scene = "menu"
             elif result == "menu":
                 current_scene = "menu"

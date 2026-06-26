@@ -189,7 +189,7 @@ class Knight(pygame.sprite.Sprite):
 
         # Va chạm theo hướng ngang (đi trái/phải)
         elif direction == 'horizontal':
-            for obj in self.battle_base.wall_objects:
+            for obj in self.battle_base.wall_objects + self.battle_base.ground_objects:
                 rect = pygame.Rect(obj["x"], obj["y"], obj["width"], obj["height"])
                 if self.rect.colliderect(rect):
                     if value > 0:  # Đi sang phải
