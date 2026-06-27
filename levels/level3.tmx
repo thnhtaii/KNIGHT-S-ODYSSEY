@@ -137,15 +137,8 @@
    </properties>
   </object>
 
-  <!-- Floating Platform 1 -->
-  <object id="8" name="gnd" x="352" y="432" width="48" height="16">
-   <properties>
-    <property name="blockers" value="tlrb"/>
-   </properties>
-  </object>
-
-  <!-- Floating Platform 2 -->
-  <object id="9" name="gnd" x="416" y="432" width="48" height="16">
+  <!-- Floating Platform (Merged 1 & 2) -->
+  <object id="8" name="gnd" x="352" y="432" width="112" height="16">
    <properties>
     <property name="blockers" value="tlrb"/>
    </properties>
@@ -171,16 +164,12 @@
     <property name="blockers" value="tlrb"/>
    </properties>
   </object>
-  <object id="32" name="gnd" x="144" y="368" width="48" height="16">
+  <object id="32" name="gnd" x="165" y="368" width="48" height="16">
    <properties>
     <property name="blockers" value="tlrb"/>
    </properties>
   </object>
-  <object id="33" name="gnd" x="80" y="288" width="48" height="16">
-   <properties>
-    <property name="blockers" value="tlrb"/>
-   </properties>
-  </object>
+
   <object id="34" name="gnd" x="512" y="448" width="48" height="16">
    <properties>
     <property name="blockers" value="tlrb"/>

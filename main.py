@@ -23,7 +23,7 @@ def main():
     pygame.init()
     pygame.mixer.init()
     screen = pygame.display.set_mode((800, 608))
-    pygame.display.set_caption("STICKY MAN")
+    pygame.display.set_caption("KNIGHT'S ODYSSEY")
 
     # Khởi tạo thanh máu và danh sách màn mở khóa (mở khóa sẵn cả 4 màn để test)
     player_health = 100
