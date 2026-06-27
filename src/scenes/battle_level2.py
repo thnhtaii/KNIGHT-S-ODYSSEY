@@ -238,17 +238,29 @@ class BattleLevel2(BattleBase):
                 else:
                     # Kiểm tra nếu đang trong animation Attack
                     if self.player.action == 3 and self.player.frame_index < len(self.player.animation_list[3]) - 1:
-                        # Gây sát thương ở frame thứ 2 của Attack
-                        if self.player.attack_frame == 2:
+                        # Gây sát thương từ frame 1 trở đi (mở rộng window sát thương)
+                        if self.player.attack_frame >= 1:
+                            # Tạo vùng tấn công theo hướng nhân vật đang đối mặt (bao gồm cả thân người chơi)
+                            attack_width = 60  # Tầm chém hợp lý trước mặt
+                            if self.player.flip:
+                                # Quay trái: bắt đầu từ phía trước mặt bên trái kéo dài qua hết thân người chơi
+                                attack_x = self.player.rect.left - attack_width
+                            else:
+                                # Quay phải: bắt đầu từ rìa trái thân người chơi kéo dài ra phía trước bên phải
+                                attack_x = self.player.rect.left
                             attack_range = pygame.Rect(
-                                self.player.rect.left - 50 if self.player.flip else self.player.rect.right,
-                                self.player.rect.top - 20,
-                                50,
+                                attack_x,
+                                self.player.rect.top - 10,
+                                self.player.rect.width + attack_width,
                                 self.player.rect.height + 20
                             )
+                            # Khởi tạo set theo dõi wolf đã bị đánh trong lượt attack này
+                            if not hasattr(self, '_attacked_wolves'):
+                                self._attacked_wolves = set()
                             for wolf in self.wolf_list:
-                                if wolf.alive and attack_range.colliderect(wolf.rect):
-                                    print(f"Attack range: {attack_range}, Wolf rect: {wolf.rect}")
+                                if wolf.alive and id(wolf) not in self._attacked_wolves and attack_range.colliderect(wolf.rect):
+                                    print(f">>> HIT! Attack range: {attack_range}, Wolf rect: {wolf.rect}")
+                                    self._attacked_wolves.add(id(wolf))
                                     wolf.check_alive()  # Chết ngay sau một lần đánh
                                     print(f"[IceWolf] {wolf.name} đã chết!")
                     else:
@@ -257,6 +269,7 @@ class BattleLevel2(BattleBase):
                             self.player.update_action(10)
                         elif self.player.attack:
                             if self.player.action != 3:
+                                self._attacked_wolves = set()  # Reset danh sách wolf đã bị đánh
                                 self.player.update_action(3)
                         elif self.player.block:
                             self.player.update_action(4)

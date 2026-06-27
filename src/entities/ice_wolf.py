@@ -270,6 +270,7 @@ class IceWolf(pygame.sprite.Sprite):
         """Apply gravity to the wolf."""
         if not self.alive:
             return
+        self.in_air = True
         self.vel_y += 0.75
         if self.vel_y > 10:
             self.vel_y = 10
