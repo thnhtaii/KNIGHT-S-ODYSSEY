@@ -2,7 +2,7 @@ import pygame
 from src.scenes.battle_base import BattleBase
 from src.components.music_manager import MusicManager
 from src.entities.knight import Knight
-from src.entities.slime import Slime
+from src.entities.ice_wolf import IceWolf
 from src.ui.settings_menu import SettingsMenu
 from src.ui.game_over import GameOverScreen
 from src.components.level_manager import LevelLogicManager
@@ -19,8 +19,8 @@ class BattleLevel2(BattleBase):
         self.paused = False
         self.door_pos = None
         self.player = None
-        self.slime_list = []
-        self.logic_manager = LevelLogicManager(self.slime_list)
+        self.wolf_list = []
+        self.logic_manager = LevelLogicManager(self.wolf_list)
 
         current_dir = os.path.dirname(os.path.abspath(__file__))
         project_root = os.path.dirname(os.path.dirname(current_dir))
@@ -30,9 +30,41 @@ class BattleLevel2(BattleBase):
         self.music_manager.play_music(music_path)
 
         # Khởi tạo các đối tượng từ object layer
-        BGDoor_dir = os.path.join(project_root, 'assets', 'backgrounds')
-        self.BGDoor = pygame.image.load(os.path.join(BGDoor_dir, "BGDoor.png")).convert_alpha()
-        self.BGDoor = pygame.transform.scale(self.BGDoor, (96, 96))
+        bg_dir = os.path.join(project_root, 'assets', 'backgrounds')
+        
+        # Load and scale level 2 scene pieces.
+        self.BGDoor = pygame.image.load(os.path.join(bg_dir, "BGDoor_level2.png")).convert_alpha()
+        self.BGDoor = pygame.transform.scale(self.BGDoor, (260, 650))
+
+        # Load custom platform, ground, and wall images
+        self.custom_platform_img = pygame.image.load(os.path.join(bg_dir, "custom_platform_level2.png")).convert_alpha()
+        self.custom_ground_img = pygame.image.load(os.path.join(bg_dir, "custom_ground_level2.png")).convert_alpha()
+        self.custom_wall_img = pygame.image.load(os.path.join(bg_dir, "custom_wall_level2.png")).convert_alpha()
+        self.left_wall_img = pygame.transform.scale(self.custom_wall_img, (260, 650))
+
+        self.cached_platforms = []
+        for obj in self.ground_objects:
+            x = int(obj["x"])
+            y = int(obj["y"])
+            w = int(obj["width"])
+            h = int(obj["height"])
+            if y < 450:
+                if x == 0:
+                    continue  # Khong ve de vi vach da nen da co san hinh anh buc
+                else:
+                    img = pygame.transform.scale(self.custom_platform_img, (w, h))
+            else:
+                if x < 32:
+                    w += x
+                    x = 0
+                if x + w > 768:
+                    w = 800 - x
+                img = pygame.transform.scale(self.custom_ground_img, (w, h))
+            self.cached_platforms.append((img, x, y))
+
+        # Tên thuật toán cho từng Ice Wolf
+        wolf_algo_names = ["wolf_astar", "wolf_greedy", "wolf_ida_star"]
+        wolf_count = 0
 
         for obj in self.spawn_objects:
             x = int(obj["x"])
@@ -40,26 +72,35 @@ class BattleLevel2(BattleBase):
             props = obj["properties"]
             
             if props.get("win") == "yes":
-                self.door_pos = (obj["x"], obj["y"])
+                self.door_pos = (580 + 129, -30 + 324)
 
             if props.get("player") == "yes":
                 self.player = Knight(x, y, scale=0.35, speed=3, battle_base=self)
+                self.player.flip = True
+                self.player.direction = -1
                 self.player_group = pygame.sprite.Group(self.player)
-            if props.get("enemy") == "yes":
-                move_area = pygame.Rect(x - 100, y - 50, 200, 100)
-                slime = Slime(x, y, 1.0, 2, self, move_area=move_area)
-                
-                if len(self.slime_list) == 0:
-                    slime.name = "slime_bfs"
-                elif len(self.slime_list) == 1:
-                    slime.name = "slime_andor"
 
-                self.slime_list.append(slime)
+        # Spawn exactly 4 wolves on different platforms
+        platforms = [
+            {"x": 585, "y": 280, "w": 170},  # Platform 3 (Top Right)
+            {"x": 215, "y": 326, "w": 130},  # Platform 4 (Middle Left)
+            {"x": 380, "y": 385, "w": 185},  # Platform 5 (Middle Center)
+            {"x": 583, "y": 444, "w": 150},  # Platform 6 (Lower Right)
+        ]
+
+        for p in platforms:
+            platform_left = p["x"] - p["w"] // 2
+            move_area = pygame.Rect(platform_left, p["y"] - 80, p["w"], 160)
+            wolf = IceWolf(p["x"], p["y"], 0.5, 2, self, move_area=move_area)
+            wolf.name = wolf_algo_names[wolf_count % len(wolf_algo_names)]
+            wolf_count += 1
+            self.wolf_list.append(wolf)
+
 
         if not self.player:
             raise ValueError("Không tìm thấy object 'player' trong map!")
 
-        self.enemy_group = pygame.sprite.Group(self.slime_list)
+        self.enemy_group = pygame.sprite.Group(self.wolf_list)
         self.moving_left = False
         self.moving_right = False
 
@@ -197,25 +238,38 @@ class BattleLevel2(BattleBase):
                 else:
                     # Kiểm tra nếu đang trong animation Attack
                     if self.player.action == 3 and self.player.frame_index < len(self.player.animation_list[3]) - 1:
-                        # Gây sát thương ở frame thứ 2 của Attack
-                        if self.player.attack_frame == 2:
+                        # Gây sát thương từ frame 1 trở đi (mở rộng window sát thương)
+                        if self.player.attack_frame >= 1:
+                            # Tạo vùng tấn công theo hướng nhân vật đang đối mặt (bao gồm cả thân người chơi)
+                            attack_width = 60  # Tầm chém hợp lý trước mặt
+                            if self.player.flip:
+                                # Quay trái: bắt đầu từ phía trước mặt bên trái kéo dài qua hết thân người chơi
+                                attack_x = self.player.rect.left - attack_width
+                            else:
+                                # Quay phải: bắt đầu từ rìa trái thân người chơi kéo dài ra phía trước bên phải
+                                attack_x = self.player.rect.left
                             attack_range = pygame.Rect(
-                                self.player.rect.left - 50 if self.player.flip else self.player.rect.right,
-                                self.player.rect.top - 20,
-                                50,
+                                attack_x,
+                                self.player.rect.top - 10,
+                                self.player.rect.width + attack_width,
                                 self.player.rect.height + 20
                             )
-                            for slime in self.slime_list:
-                                if slime.alive and attack_range.colliderect(slime.rect):
-                                    print(f"Attack range: {attack_range}, Slime rect: {slime.rect}")
-                                    slime.check_alive()  # Chết ngay sau một lần đánh
-                                    print(f"[Slime] {slime.name} đã chết!")
+                            # Khởi tạo set theo dõi wolf đã bị đánh trong lượt attack này
+                            if not hasattr(self, '_attacked_wolves'):
+                                self._attacked_wolves = set()
+                            for wolf in self.wolf_list:
+                                if wolf.alive and id(wolf) not in self._attacked_wolves and attack_range.colliderect(wolf.rect):
+                                    print(f">>> HIT! Attack range: {attack_range}, Wolf rect: {wolf.rect}")
+                                    self._attacked_wolves.add(id(wolf))
+                                    wolf.check_alive()  # Chết ngay sau một lần đánh
+                                    print(f"[IceWolf] {wolf.name} đã chết!")
                     else:
                         # Các hành động khác
                         if self.player.attack and self.player.in_air:
                             self.player.update_action(10)
                         elif self.player.attack:
                             if self.player.action != 3:
+                                self._attacked_wolves = set()  # Reset danh sách wolf đã bị đánh
                                 self.player.update_action(3)
                         elif self.player.block:
                             self.player.update_action(4)
@@ -234,31 +288,35 @@ class BattleLevel2(BattleBase):
 
                 self.player.update_animation()
 
-                # Cập nhật slime
-                for slime in self.slime_list[:]:  # Sao chép danh sách để tránh lỗi khi xóa
-                    if slime.alive:
-                        if slime.name == "slime_bfs":
-                            slime.update_bfs(self.player, self.grid, self.margin_data)
-                        elif slime.name == "slime_andor":
-                            slime.update_andor(self.player, self.grid, self.margin_data)
+                # Cập nhật Ice Wolf
+                for wolf in self.wolf_list[:]:  # Sao chép danh sách để tránh lỗi khi xóa
+                    if wolf.alive:
+                        # 1) Run pathfinding / movement
+                        if wolf.name == "wolf_astar":
+                            wolf.update_astar(self.player, self.grid, self.margin_data)
+                        elif wolf.name == "wolf_greedy":
+                            wolf.update_greedy(self.player, self.grid, self.margin_data)
+                        elif wolf.name == "wolf_ida_star":
+                            wolf.update_ida_star(self.player, self.grid, self.margin_data)
                         else:
-                            slime.move()
-                        slime.try_attack_player(self.player)
+                            wolf.move()
 
-                        if slime.in_air:
-                            slime.update_action(1)
-                        else:
-                            slime.update_action(0)
+                        # 2) Attack check
+                        wolf.try_attack_player(self.player)
+
+                        # 3) Decide animation based on current state (centralized)
+                        wolf.decide_animation()
                     else:
-                        if slime.action != 3:
-                            slime.update_action(3)  # Đảm bảo chuyển sang Death
-                        slime.update_animation()
-                        if slime.frame_index >= len(slime.animation_list[3]) - 1:  # Đã hoàn thành animation Death
-                            self.slime_list.remove(slime)
-                            self.enemy_group.remove(slime)
-                            print(f"[Slime] {slime.name} đã được xóa!")
+                        if wolf.action != 3:
+                            wolf.update_action(3)  # Đảm bảo chuyển sang Die
+                        if wolf.death_animation_complete:
+                            self.wolf_list.remove(wolf)
+                            self.enemy_group.remove(wolf)
+                            print(f"[IceWolf] {wolf.name} đã được xóa!")
+                            continue
 
-                    slime.update_animation()
+                    # 4) Update animation exactly once per frame
+                    wolf.update_animation()
 
             if not self.player.alive:
                 self.player_health = 0
@@ -281,35 +339,36 @@ class BattleLevel2(BattleBase):
             print(f"FPS: {clock.get_fps()}")
 
     def draw(self):
-        self.screen.fill((0, 0, 0))
-        bg_filename = f"{self.level_name}.jpg"
-        bg_path = os.path.join(self.project_root, "assets", "backgrounds", bg_filename)
-        if os.path.exists(bg_path):
-            bg = pygame.image.load(bg_path).convert()
-            self.screen.blit(bg, (-self.camera_offset[0], -self.camera_offset[1]))
         super().draw(self.camera_offset)
 
-        if self.door_pos:
-            door_x = self.door_pos[0] - self.camera_offset[0]
-            door_y = self.door_pos[1] - self.BGDoor.get_height() - self.camera_offset[1]
-            # pygame.draw.rect(self.screen, (255, 0, 0), pygame.Rect(door_x, door_y, 64, 64), 2)
-            self.screen.blit(self.BGDoor, (door_x, door_y))
+        # Large scenic pieces for level 2 only. These are visual backdrops; wall
+        # collision still comes from the object layer in level2.tmx.
+        self.screen.blit(self.left_wall_img, (-22 - self.camera_offset[0], -30 - self.camera_offset[1]))
+        self.screen.blit(self.BGDoor, (580 - self.camera_offset[0], -30 - self.camera_offset[1]))
+
+        # Draw the custom platform, ground and wall images from cache
+        for img, x, y in self.cached_platforms:
+            draw_x = x - self.camera_offset[0]
+            draw_y = y - self.camera_offset[1]
+            self.screen.blit(img, (draw_x, draw_y))
 
         for sprite in self.player_group:
             flipped_image = pygame.transform.flip(sprite.image, sprite.flip, False)
             self.screen.blit(flipped_image, (sprite.rect.x - self.camera_offset[0], sprite.rect.y - self.camera_offset[1]))
 
         for sprite in self.enemy_group:
-            if sprite.alive or sprite.action == 3:  # Vẽ Slime sống hoặc đang trong trạng thái Death
-                draw_x = sprite.rect.x - self.camera_offset[0]
-                draw_y = sprite.rect.y - self.camera_offset[1]
-                self.screen.blit(sprite.image, (draw_x, draw_y))
+            if sprite.alive or sprite.action == 3:  # Vẽ Ice Wolf sống hoặc đang trong trạng thái Die
+                draw_x = sprite.rect.centerx - sprite.image.get_width() // 2 - self.camera_offset[0]
+                draw_y = sprite.rect.bottom - sprite.image.get_height() - self.camera_offset[1]
+                flipped = pygame.transform.flip(sprite.image, sprite.flip, False)
+                self.screen.blit(flipped, (draw_x, draw_y))
                 if sprite.alive:
-                    font = pygame.font.SysFont("Arial", 10, bold=True)
-                    algo_name = sprite.name.replace("slime_", "").upper()
-                    text_surface = font.render(algo_name, True, (255, 255, 255))
-                    text_rect = text_surface.get_rect(center=(draw_x + sprite.rect.width // 2, draw_y + sprite.rect.height // 2 + 2))
+                    font = pygame.font.SysFont("Arial", 12, bold=True)
+                    algo_name = sprite.name.replace("wolf_", "").upper()
+                    text_surface = font.render(algo_name, True, (100, 200, 255))
+                    text_rect = text_surface.get_rect(center=(sprite.rect.centerx - self.camera_offset[0], sprite.rect.top - 10 - self.camera_offset[1]))
                     self.screen.blit(text_surface, text_rect)
+
 
         self.health_bar.draw(self.screen)
 

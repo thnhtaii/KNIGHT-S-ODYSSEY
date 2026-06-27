@@ -157,17 +157,23 @@ class BattleBase:
 
     def draw(self, camera_offset=[0, 0]):
         self.screen.fill((0, 0, 0))  # Xóa màn hình
+        bg_filename_clean = f"{self.level_name}_clean.jpg"
+        bg_path_clean = os.path.join(self.project_root, "assets", "backgrounds", bg_filename_clean)
         bg_filename = f"{self.level_name}.jpg"
         bg_path = os.path.join(self.project_root, "assets", "backgrounds", bg_filename)
-        if os.path.exists(bg_path):
-            bg = pygame.image.load(bg_path).convert()
+        
+        selected_bg_path = bg_path_clean if os.path.exists(bg_path_clean) else bg_path
+        
+        if os.path.exists(selected_bg_path):
+            bg = pygame.image.load(selected_bg_path).convert()
             bg = pygame.transform.scale(bg, (self.screen.get_width(), self.screen.get_height()))
             self.screen.blit(bg, (-camera_offset[0], -camera_offset[1]))
 
         for layer_idx, layer in enumerate(self.tile_layers):
             if layer_idx < len(self.tile_layers_visibility) and not self.tile_layers_visibility[layer_idx]:
                 continue
-            if self.level_name == "level1" and layer_idx < len(self.tile_layers_names) and self.tile_layers_names[layer_idx] == "ground":
+            if (self.level_name == "level1" and layer_idx < len(self.tile_layers_names) and self.tile_layers_names[layer_idx] == "ground") or \
+               (self.level_name == "level2" and layer_idx < len(self.tile_layers_names) and self.tile_layers_names[layer_idx] in ["ground", "platform"]):
                 continue
             for idx, tile in enumerate(layer):
                 tile = int(tile)
