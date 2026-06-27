@@ -189,7 +189,7 @@
         <property name="blockers" value="tlrb" />
       </properties>
     </object>
-    <object id="37" name="BGDoor" x="690" y="300" width="16" height="16" gid="1398">
+    <object id="37" name="BGDoor" x="780" y="300" width="16" height="16" gid="1398">
       <properties>
         <property name="win" value="yes" />
       </properties>

@@ -2,6 +2,12 @@ import pygame  # Thư viện game
 import sys     # Để thoát chương trình
 import os      # Để xử lý đường dẫn
 
+# Reconfigure stdout/stderr to support UTF-8 characters on Windows console
+if sys.platform.startswith('win'):
+    sys.stdout.reconfigure(encoding='utf-8')
+    sys.stderr.reconfigure(encoding='utf-8')
+
+
 # Import các lớp từ thư mục src/scenes
 from src.scenes.background import Background
 from src.scenes.menu import Menu
@@ -20,7 +26,7 @@ def main():
 
     # Khởi tạo thanh máu và danh sách màn mở khóa
     player_health = 100
-    unlocked_levels = [1]  # Chỉ mở khóa level 1 ban đầu
+    unlocked_levels = [1, 2]  # Chỉ mở khóa level 1 ban đầu
     health_bar = HealthBar(20, 20, 140, 20, player_health)
 
     current_scene = "background"

@@ -34,14 +34,13 @@ class BattleLevel2(BattleBase):
         
         # Load and scale level 2 scene pieces.
         self.BGDoor = pygame.image.load(os.path.join(bg_dir, "BGDoor_level2.png")).convert_alpha()
-        self.BGDoor = pygame.transform.scale(self.BGDoor, (489, 600))
+        self.BGDoor = pygame.transform.scale(self.BGDoor, (260, 650))
 
         # Load custom platform, ground, and wall images
         self.custom_platform_img = pygame.image.load(os.path.join(bg_dir, "custom_platform_level2.png")).convert_alpha()
-        self.custom_platform_chunky = pygame.image.load(os.path.join(bg_dir, "custom_platform_chunky.png")).convert_alpha()
         self.custom_ground_img = pygame.image.load(os.path.join(bg_dir, "custom_ground_level2.png")).convert_alpha()
         self.custom_wall_img = pygame.image.load(os.path.join(bg_dir, "custom_wall_level2.png")).convert_alpha()
-        self.left_wall_img = pygame.transform.scale(self.custom_wall_img, (260, 608))
+        self.left_wall_img = pygame.transform.scale(self.custom_wall_img, (260, 650))
 
         self.cached_platforms = []
         for obj in self.ground_objects:
@@ -73,7 +72,7 @@ class BattleLevel2(BattleBase):
             props = obj["properties"]
             
             if props.get("win") == "yes":
-                self.door_pos = (obj["x"], obj["y"])
+                self.door_pos = (580 + 129, -30 + 324)
 
             if props.get("player") == "yes":
                 self.player = Knight(x, y, scale=0.35, speed=3, battle_base=self)
@@ -82,7 +81,7 @@ class BattleLevel2(BattleBase):
                 self.player_group = pygame.sprite.Group(self.player)
             if props.get("enemy") == "yes":
                 move_area = pygame.Rect(x - 150, y - 80, 300, 160)
-                wolf = IceWolf(x, y, 0.5, 2, self, move_area=move_area)
+                wolf = IceWolf(x, y, 0.3, 2, self, move_area=move_area)
                 wolf.name = wolf_algo_names[wolf_count % len(wolf_algo_names)]
                 wolf_count += 1
                 self.wolf_list.append(wolf)
@@ -314,18 +313,12 @@ class BattleLevel2(BattleBase):
             print(f"FPS: {clock.get_fps()}")
 
     def draw(self):
-        self.screen.fill((0, 0, 0))
-        bg_filename = f"{self.level_name}.jpg"
-        bg_path = os.path.join(self.project_root, "assets", "backgrounds", bg_filename)
-        if os.path.exists(bg_path):
-            bg = pygame.image.load(bg_path).convert()
-            self.screen.blit(bg, (-self.camera_offset[0], -self.camera_offset[1]))
         super().draw(self.camera_offset)
 
         # Large scenic pieces for level 2 only. These are visual backdrops; wall
         # collision still comes from the object layer in level2.tmx.
-        self.screen.blit(self.left_wall_img, (-22 - self.camera_offset[0], 0 - self.camera_offset[1]))
-        self.screen.blit(self.BGDoor, (380 - self.camera_offset[0], -2 - self.camera_offset[1]))
+        self.screen.blit(self.left_wall_img, (-22 - self.camera_offset[0], -30 - self.camera_offset[1]))
+        self.screen.blit(self.BGDoor, (580 - self.camera_offset[0], -30 - self.camera_offset[1]))
 
         # Draw the custom platform, ground and wall images from cache
         for img, x, y in self.cached_platforms:
