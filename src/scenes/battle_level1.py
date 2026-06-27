@@ -358,8 +358,12 @@ class BattleLevel1(BattleBase):
                     font = pygame.font.SysFont("Arial", 10, bold=True)
                     algo_name = sprite.name.replace("slime_", "").upper()
                     text_surface = font.render(algo_name, True, (255, 255, 255))
-                    text_surface.set_alpha(130)  # Giảm độ đục (tăng độ trong suốt) để hiện rõ mắt mũi
-                    text_rect = text_surface.get_rect(center=(draw_x + sprite.rect.width // 2, draw_y + sprite.rect.height // 2 + 2))
+                    text_rect = text_surface.get_rect(center=(draw_x + sprite.rect.width // 2, draw_y - 12))
+                    # Draw a small dark background box for high legibility
+                    bg_rect = pygame.Rect(text_rect.x - 4, text_rect.y - 2, text_rect.width + 8, text_rect.height + 4)
+                    bg_surface = pygame.Surface((bg_rect.width, bg_rect.height), pygame.SRCALPHA)
+                    bg_surface.fill((0, 0, 0, 160))
+                    self.screen.blit(bg_surface, bg_rect)
                     self.screen.blit(text_surface, text_rect)
 
         self.health_bar.draw(self.screen)
