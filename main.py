@@ -27,11 +27,8 @@ def main():
 
     # Khởi tạo thanh máu và danh sách màn mở khóa (mở khóa sẵn cả 4 màn để test)
     player_health = 100
-<<<<<<< HEAD
     unlocked_levels = [1, 2, 3, 4]  # Mở khóa sẵn cả 4 màn để test
-=======
-    unlocked_levels = [1, 2]  # Chỉ mở khóa level 1 ban đầu
->>>>>>> origin/level1
+
     health_bar = HealthBar(20, 20, 140, 20, player_health)
 
     current_scene = "background"

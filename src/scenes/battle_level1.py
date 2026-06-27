@@ -158,7 +158,6 @@ class BattleLevel1(BattleBase):
                         if event.key == pygame.K_w and self.player.alive:
                             self.player.jump = True
                         if event.key == pygame.K_SPACE and self.player.alive:
-                            self.player.update_action(3)
                             self.player.attack = True
                         if event.key == pygame.K_b:
                             self.player.block = True

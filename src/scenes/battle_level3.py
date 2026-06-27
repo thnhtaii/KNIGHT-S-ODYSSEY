@@ -10,11 +10,7 @@ from src.ui.game_victory import GameVictoryScreen
 import os
 
 class BattleLevel3(BattleBase):
-<<<<<<< HEAD
     def __init__(self, screen, health_bar, player_health):
-=======
-    def __init__(self, screen, health_bar=None, player_health=100):
->>>>>>> origin/level1
         super().__init__(screen, level_name="level3")
         self.screen = screen
         self.health_bar = health_bar
