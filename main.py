@@ -10,6 +10,7 @@ from src.scenes.battle_level2 import BattleLevel2
 from src.scenes.battle_level3 import BattleLevel3
 from src.scenes.battle_boss import BattleBoss
 from src.scenes.battle_level5 import BattleLevel5
+from src.scenes.battle_level6 import BattleLevel6
 from src.ui.health_bar import HealthBar
 
 
@@ -76,8 +77,8 @@ def main():
             battle = BattleLevel5(screen, health_bar, player_health)
             result = battle.run()
             if result == "win":
-                if 5 not in unlocked_levels:
-                    unlocked_levels.append(5)
+                if 6 not in unlocked_levels:
+                    unlocked_levels.append(6)
                 current_scene = "menu"
             elif result == "menu":
                 current_scene = "menu"
@@ -90,6 +91,18 @@ def main():
             battle = BattleBoss(screen, health_bar, player_health)
             result = battle.run()
             current_scene = result
+
+        elif current_scene == "level6":
+            battle = BattleLevel6(screen, health_bar, player_health)
+            result = battle.run()
+            if result == "win":
+                current_scene = "menu"
+            elif result == "menu":
+                current_scene = "menu"
+            elif result == "quit":
+                current_scene = "quit"
+            else:
+                current_scene = result
 
         elif current_scene == "quit":
             pygame.quit()

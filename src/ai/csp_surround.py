@@ -2,21 +2,22 @@ import random
 from collections import deque
 
 class CSPSurround:
-    def __init__(self, map_width, map_height, grid, is_walkable=None):
+    def __init__(self, map_width, map_height, grid, is_walkable_func=None):
         self.map_width = map_width
         self.map_height = map_height
         self.grid = grid
-        self.is_walkable = is_walkable
+        self.is_walkable_func = is_walkable_func
         
     def get_valid_neighbors(self, px, py):
-        """Lấy các vị trí hợp lệ xung quanh người chơi."""
+        """Lấy các vị trí hợp lệ xung quanh người chơi (ko phải tường)."""
         valid = []
         for nx, ny in [(px-1, py), (px+1, py), (px, py-1), (px, py+1), (px-2, py), (px+2, py)]:
-            if self.is_walkable and self.is_walkable(nx, ny):
-                valid.append((nx, ny))
-            elif not self.is_walkable:
-                if 0 <= nx < self.map_width and 0 <= ny < self.map_height:
-                    if self.grid[ny][nx] == 0: # 0 is Air
+            if 0 <= nx < self.map_width and 0 <= ny < self.map_height:
+                if self.is_walkable_func:
+                    if self.is_walkable_func(nx, ny):
+                        valid.append((nx, ny))
+                else:
+                    if self.grid[ny][nx] == 0: # Fallback
                         valid.append((nx, ny))
         return valid
 

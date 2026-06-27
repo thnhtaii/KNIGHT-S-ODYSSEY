@@ -96,6 +96,9 @@ class BossKnight(pygame.sprite.Sprite):
             if self.frame_index >= len(self.animation_list[self.action]):
                 if self.action == 3: # death
                     self.frame_index = len(self.animation_list[self.action]) - 1
+                elif self.action == 2: # attack finished
+                    self.action = 0 # reset to idle/walk
+                    self.frame_index = 0
                 else:
                     self.frame_index = 0
 
@@ -122,6 +125,10 @@ class BossKnight(pygame.sprite.Sprite):
                     player.check_alive()
 
     def move_along_path(self):
+        # Đang tấn công -> dừng lại thực hiện hết hoạt ảnh cắn, không cho di chuyển cướp hành động
+        if self.action == 2:
+            return
+            
         # Move towards the next node in self.path
         if not self.path:
             self.update_action(0)

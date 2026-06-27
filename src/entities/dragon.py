@@ -7,7 +7,7 @@ class Dragon(BossKnight):
     def __init__(self, x, y, scale, speed, battle_base, algo_name=""):
         self.algo_name = algo_name
         self.scale = scale
-        self.font = pygame.font.SysFont('Arial', 16, bold=True)
+        self.font = pygame.font.SysFont('Arial', 12, bold=True)
         # Khởi tạo qua class cha BossKnight (tạm thời load sprite boss_knight)
         super().__init__(x, y, scale, speed, battle_base)
         self.name = "dragon"
@@ -55,8 +55,11 @@ class Dragon(BossKnight):
                     for col in range(cols):
                         rect = pygame.Rect(col * frame_w, row * frame_h, frame_w, frame_h)
                         frame = sheet.subsurface(rect)
-                        img = pygame.transform.scale(frame, (int(frame_w * scale), int(frame_h * scale)))
-                        temp_list.append(img)
+                        # Tránh nạp các ô trống ở cuối sprite sheet gây biến mất khung hình
+                        mask = pygame.mask.from_surface(frame)
+                        if mask.count() > 0:
+                            img = pygame.transform.scale(frame, (int(frame_w * scale), int(frame_h * scale)))
+                            temp_list.append(img)
             else:
                 surf = pygame.Surface((48, 48))
                 surf.fill((255, 0, 0))
@@ -78,6 +81,6 @@ class Dragon(BossKnight):
         
         # Vẽ tên thuật toán phía trên
         if self.algo_name and self.alive:
-            text = self.font.render(self.algo_name, True, (255, 255, 0))
+            text = self.font.render(self.algo_name, True, (210, 180, 140))
             text_rect = text.get_rect(center=(draw_x + self.rect.width // 2, draw_y + int(25 * self.scale) - 8))
             surface.blit(text, text_rect)

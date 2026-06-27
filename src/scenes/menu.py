@@ -22,6 +22,7 @@ class Menu:
             {"id": 3, "unlocked": False},
             {"id": 4, "unlocked": False},
             {"id": 5, "unlocked": True},
+            {"id": 6, "unlocked": True},
         ]
         if unlocked_levels:
             for level in self.levels:

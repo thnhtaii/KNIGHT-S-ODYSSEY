@@ -23,6 +23,30 @@ class BattleLevel5(BattleBase):
 
         current_dir = os.path.dirname(os.path.abspath(__file__))
         project_root = os.path.dirname(os.path.dirname(current_dir))
+
+        # Tải và thiết lập phông nền hang rồng (concept dragon cave)
+        bg_path = os.path.join(project_root, "assets", "sprites", "dragon", "bg.png")
+        if os.path.exists(bg_path):
+            bg_raw = pygame.image.load(bg_path).convert()
+            map_pixel_w = self.map_width * self.tile_width
+            map_pixel_h = self.map_height * self.tile_height
+            self._bg_surface = pygame.transform.smoothscale(bg_raw, (map_pixel_w, map_pixel_h))
+
+        # 2. Thiết lập gạch sàn đi chậm (Tile 30) là dung nham đỏ rực tạo tự động (lava_floor.png)
+        #    và gạch tường biên (Tile 54) là đá bazan ấm áp không tím (warm_basalt.png)
+        lava_path = os.path.join(project_root, "assets", "sprites", "terrain", "lava_floor.png")
+        wall_path = os.path.join(project_root, "assets", "sprites", "terrain", "warm_basalt.png")
+        
+        if os.path.exists(lava_path):
+            floor_sheet = pygame.image.load(lava_path).convert_alpha()
+            floor_tile = pygame.transform.smoothscale(floor_sheet.subsurface(pygame.Rect(384, 384, 256, 256)), (16, 16))
+            self.tiles[30] = floor_tile
+
+        if os.path.exists(wall_path):
+            wall_sheet = pygame.image.load(wall_path).convert_alpha()
+            border_tile = pygame.transform.smoothscale(wall_sheet.subsurface(pygame.Rect(384, 384, 256, 256)), (16, 16))
+            self.tiles[54] = border_tile
+
         music_path = os.path.join(project_root, 'assets', 'audio', 'music_theme', 'MusicLV1.mp3') # Reuse music for now
         
         self.music_manager = MusicManager()
@@ -32,82 +56,38 @@ class BattleLevel5(BattleBase):
         self.BGDoor = pygame.image.load(os.path.join(BGDoor_dir, "BGDoor.png")).convert_alpha()
         self.BGDoor = pygame.transform.scale(self.BGDoor, (96, 96))
         
-        # Load ladder spritesheet và tách nền lấy thang
-        ladder_path = os.path.join(project_root, 'assets', 'sprites', 'ladder', 'ladder.png')
+        # 3. Nạp và xử lý cầu thang xương tự động (bone_ladder_final.png) được tạo mới
         self.ladder_top = None
         self.ladder_mid = None
         self.ladder_bot = None
-        if os.path.exists(ladder_path):
-            sheet = pygame.image.load(ladder_path).convert_alpha()
-            sheet_w, sheet_h = sheet.get_size()
-            # Spritesheet 6 cột x 5 hàng
-            cell_w = sheet_w // 6
-            cell_h = sheet_h // 5
-            # Lấy thang đầu tiên (hàng 0, cột 0)
-            first_cell = sheet.subsurface(pygame.Rect(0, 0, cell_w, cell_h)).copy()
-
-            # === TÁCH NỀN HOÀN TOÀN: lấy các màu ở viền làm nền ===
-            bg_colors = set()
-            # Lấy tất cả các màu ở viền trên, dưới, trái, phải (vì thang nằm ở giữa)
-            for x in range(cell_w):
-                c1 = first_cell.get_at((x, 0))
-                c2 = first_cell.get_at((x, cell_h - 1))
-                bg_colors.add((c1[0], c1[1], c1[2]))
-                bg_colors.add((c2[0], c2[1], c2[2]))
-            for y in range(cell_h):
-                c1 = first_cell.get_at((0, y))
-                c2 = first_cell.get_at((cell_w - 1, y))
-                bg_colors.add((c1[0], c1[1], c1[2]))
-                bg_colors.add((c2[0], c2[1], c2[2]))
-                
-            tolerance = 45  # Ngưỡng khác biệt màu
-            for y in range(cell_h):
-                for x in range(cell_w):
-                    px = first_cell.get_at((x, y))
-                    r, g, b = px[0], px[1], px[2]
-                    # Nếu màu pixel giống với bất kỳ màu nền nào ở viền -> làm trong suốt
-                    is_bg = False
-                    for bg_r, bg_g, bg_b in bg_colors:
-                        if abs(r - bg_r) + abs(g - bg_g) + abs(b - bg_b) < tolerance:
-                            is_bg = True
-                            break
-                    if is_bg:
-                        first_cell.set_at((x, y), (0, 0, 0, 0))
-
-            # Crop bounding box thực tế (chỉ giữ phần thang)
-            mask = pygame.mask.from_surface(first_cell)
-            rects = mask.get_bounding_rects()
-            if rects:
-                bbox = rects[0]
-                for r in rects[1:]:
-                    bbox.union_ip(r)
-                ladder_cropped = first_cell.subsurface(bbox).copy()
-            else:
-                ladder_cropped = first_cell
-
-            # Scale cho vừa lối đi (32px ngang)
-            crop_w, crop_h = ladder_cropped.get_size()
-            target_w = 32
-            scale_ratio = target_w / crop_w
-            target_h = int(crop_h * scale_ratio)
-            ladder_scaled = pygame.transform.smoothscale(ladder_cropped, (target_w, target_h))
-
-            # Chia thành 3 phần: đỉnh, thân, đáy (mỗi phần cao 32px)
-            seg_h = 32
-            if target_h >= seg_h * 3:
-                self.ladder_top = ladder_scaled.subsurface(pygame.Rect(0, 0, target_w, seg_h)).copy()
-                mid_y = target_h // 2 - seg_h // 2
-                self.ladder_mid = ladder_scaled.subsurface(pygame.Rect(0, mid_y, target_w, seg_h)).copy()
-                self.ladder_bot = ladder_scaled.subsurface(pygame.Rect(0, target_h - seg_h, target_w, seg_h)).copy()
-            elif target_h >= seg_h * 2:
-                self.ladder_top = ladder_scaled.subsurface(pygame.Rect(0, 0, target_w, seg_h)).copy()
-                self.ladder_mid = ladder_scaled.subsurface(pygame.Rect(0, target_h - seg_h, target_w, seg_h)).copy()
-                self.ladder_bot = self.ladder_mid.copy()
-            else:
-                tile = pygame.transform.smoothscale(ladder_cropped, (target_w, seg_h))
-                self.ladder_top = tile
-                self.ladder_mid = tile
-                self.ladder_bot = tile
+        
+        bone_ladder_path = os.path.join(project_root, "assets", "sprites", "terrain", "bone_ladder_final.png")
+        if os.path.exists(bone_ladder_path):
+            bone_ladder_src = pygame.image.load(bone_ladder_path).convert_alpha()
+            
+            # Áp dụng bộ lọc màu cho xương rồng kem nhạt nhã nhặn, không quá sáng/trắng
+            w, h = bone_ladder_src.get_size()
+            for y in range(h):
+                for x in range(w):
+                    r, g, b, a = bone_ladder_src.get_at((x, y))
+                    if a > 0:
+                        lum = 0.299 * r + 0.587 * g + 0.114 * b
+                        if lum > 130:  # Vân đón sáng -> Màu vàng kem/ngà tối
+                            nr, ng, nb = 215, 208, 185
+                        elif lum > 60:  # Thân xương cốt -> Màu xám kem trầm
+                            nr, ng, nb = 175, 170, 155
+                        else:  # Khe tối
+                            nr, ng, nb = 65, 63, 60
+                        bone_ladder_src.set_at((x, y), (nr, ng, nb, a))
+            
+            # Scale nguồn xương rồng về độ rộng 18px để có tỷ lệ đẹp, không quá to
+            scaled_h = int(h * (18 / w))
+            scaled_ladder = pygame.transform.smoothscale(bone_ladder_src, (18, scaled_h))
+            
+            # Cắt thành 3 phần đại diện: đỉnh, thân, đáy để lặp tuần hoàn (tránh méo/giãn ảnh khi thang quá dài/ngắn)
+            self.ladder_top = scaled_ladder.subsurface(pygame.Rect(0, 0, 18, 32)).copy()
+            self.ladder_mid = scaled_ladder.subsurface(pygame.Rect(0, 56, 18, 32)).copy()
+            self.ladder_bot = scaled_ladder.subsurface(pygame.Rect(0, 112, 18, 32)).copy()
 
         for obj in self.spawn_objects:
             x = int(obj["x"])
@@ -161,7 +141,7 @@ class BattleLevel5(BattleBase):
                 line.append(tile_id)
             self.grid.append(line)
 
-        self.font_warning = pygame.font.SysFont('Arial', 32, bold=True)
+        # Base speed
         self.player_base_speed = self.player.speed
 
         # Damage logic
@@ -170,6 +150,13 @@ class BattleLevel5(BattleBase):
         self.TRAPPED_MAX_DEPTH = 20 # Bán kính giới hạn BFS = 20 ô
         self.is_trapped = False
         self.font_warning = pygame.font.SysFont('Arial', 24, bold=True)
+
+        # Load ảnh pop-up cảnh báo bị bao vây (đã được tách nền hoàn hảo)
+        popup_path = os.path.join(project_root, 'assets', 'sprites', 'dragon', 'pop-up_clean.png')
+        if os.path.exists(popup_path):
+            self.warning_popup = pygame.image.load(popup_path).convert_alpha()
+        else:
+            self.warning_popup = None
 
     def run(self):
         clock = pygame.time.Clock()
@@ -297,10 +284,10 @@ class BattleLevel5(BattleBase):
     def is_walkable(self, x, y):
         if x < 0 or x >= self.map_width or y < 0 or y >= self.map_height:
             return False
-        # Nếu là khí và không có thang thì phải kiểm tra xem bên dưới có sàn không
+        # Nếu là khí và không có thang thì phải kiểm tra xem bên dưới có sàn không hoặc là thang
         if self.grid[y][x] == 0 and not self.is_ladder(x, y):
             if y + 1 < self.map_height:
-                if self.grid[y+1][x] > 0:
+                if self.grid[y+1][x] > 0 or self.is_ladder(x, y+1):
                     return True
             return False
         # Nếu là thang thì luôn đi được
@@ -325,7 +312,6 @@ class BattleLevel5(BattleBase):
         if self.is_ladder(px, py):
             if self.is_walkable(px, py - 1):
                 neighbors.append((px, py - 1))
-                
         return neighbors
 
     def update_enemy_paths(self):
@@ -393,7 +379,7 @@ class BattleLevel5(BattleBase):
                         visited.add((ox, oy))
                         if other_boss.path:
                             nx, ny = other_boss.path[0]
-                            visited.add((int(nx) // self.tile_width, int(ny + other_boss.height // 2 - int(20 * other_boss.scale)) // self.tile_height - 1))
+                            visited.add((int(nx) // self.tile_width, int(ny + other_boss.height // 2 - int(20 * boss.scale)) // self.tile_height - 1))
 
                 path_found = []
                 best_dist = float('inf')
@@ -549,24 +535,26 @@ class BattleLevel5(BattleBase):
         self.screen.fill((0, 0, 0))
         super().draw(self.camera_offset)
 
-        # Draw ladders visually — chồng đỉnh + thân + đáy
+        # Draw ladders visually — Vẽ cầu thang xương rồng thanh mảnh được ghép từ các khúc xương tuần hoàn
         for lad in self.ladder_objects:
             lx = lad["x"] - self.camera_offset[0]
             ly = lad["y"] - self.camera_offset[1]
             lw = lad["width"]
             lh = lad["height"]
-            seg_h = 32
             
             if self.ladder_mid:
+                seg_h = 32
                 num_segments = max(1, int(lh) // seg_h)
+                offset_x = (int(lw) - 18) // 2
+                lx_centered = lx + offset_x
                 for i in range(num_segments):
                     y_pos = ly + i * seg_h
                     if i == 0 and self.ladder_top:
-                        self.screen.blit(self.ladder_top, (lx, y_pos))
+                        self.screen.blit(self.ladder_top, (lx_centered, y_pos))
                     elif i == num_segments - 1 and self.ladder_bot:
-                        self.screen.blit(self.ladder_bot, (lx, y_pos))
+                        self.screen.blit(self.ladder_bot, (lx_centered, y_pos))
                     else:
-                        self.screen.blit(self.ladder_mid, (lx, y_pos))
+                        self.screen.blit(self.ladder_mid, (lx_centered, y_pos))
             else:
                 # Fallback: vẽ thang bằng hình học
                 pygame.draw.rect(self.screen, (139, 69, 19), (lx + 2, ly, 4, lh))
@@ -594,13 +582,23 @@ class BattleLevel5(BattleBase):
         self.screen.blit(self.continue_icon, (self.continue_button.x, self.continue_button.y))
 
         if getattr(self, 'is_trapped', False):
-            warning_text = self.font_warning.render("Bạn đang bị rồng bao vây !", True, (255, 0, 0))
-            text_rect = warning_text.get_rect(center=(self.screen_width // 2, 30))
-            self.screen.blit(warning_text, text_rect)
+            if hasattr(self, 'warning_popup') and self.warning_popup:
+                # Vẽ pop-up cảnh báo ở góc trên chính giữa màn hình (y = 20px)
+                popup_rect = self.warning_popup.get_rect(center=(self.screen_width // 2, 20 + self.warning_popup.get_height() // 2))
+                self.screen.blit(self.warning_popup, popup_rect)
+            else:
+                warning_text = self.font_warning.render("Bạn đang bị rồng bao vây !", True, (255, 0, 0))
+                text_rect = warning_text.get_rect(center=(self.screen_width // 2, 30))
+                self.screen.blit(warning_text, text_rect)
 
         if self.paused:
             font = pygame.font.SysFont('Arial', 36, bold=True)
             pause_text = font.render("PAUSED", True, (255, 255, 255))
+            text_rect = pause_text.get_rect(center=(self.screen_width // 2, self.screen_height // 2))
+            self.screen.blit(pause_text, text_rect)
+            pause_text = font.render("PAUSED", True, (255, 255, 255))
+            text_rect = pause_text.get_rect(center=(self.screen_width // 2, self.screen_height // 2))
+            self.screen.blit(pause_text, text_rect)
             text_rect = pause_text.get_rect(center=(self.screen_width // 2, self.screen_height // 2))
             self.screen.blit(pause_text, text_rect)
             pause_text = font.render("PAUSED", True, (255, 255, 255))

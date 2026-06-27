@@ -85,9 +85,9 @@ for r in range(ROWS):
   </object>''')
             lad_id += 1
 
-# Slow zone
-for r in range(16, 26):
-    for c in range(1, 21):
+# Slow zones (Floor 2 downwards: rows 12, 17, 22, 27, 32, 37)
+for r in [12, 17, 22, 27, 32, 37]:
+    for c in range(1, COLS - 1):
         if terrain[r][c] == T_WALL:
             terrain[r][c] = T_SLOW
 
