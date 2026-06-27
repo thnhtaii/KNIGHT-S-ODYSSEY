@@ -16,8 +16,10 @@ class BattleBase:
         self.tile_layers_visibility = []
         self.tile_layers_names = []
         self.object_layers = []
+        self.camera_offset = [0, 0]
         self.ground_objects = []
         self.wall_objects = []
+        self.ladder_objects = []
         self.spawn_objects = []
         self.margin_data = []  # Thêm thuộc tính để lưu dữ liệu lớp margin
 
@@ -87,6 +89,7 @@ class BattleBase:
             objects = []
             for obj in obj_group.findall("object"):
                 obj_data = {
+                    "id": obj.get("id", "0"),
                     "name": obj.get("name"),
                     "type": obj.get("type"),
                     "x": float(obj.get("x")),
@@ -102,6 +105,10 @@ class BattleBase:
                     self.ground_objects.append(obj_data)
                 elif obj_data["name"] == "wall":
                     self.wall_objects.append(obj_data)
+                elif obj_data["name"] == "ladder":
+                    if not hasattr(self, "ladder_objects"):
+                        self.ladder_objects = []
+                    self.ladder_objects.append(obj_data)
                 if (
                     obj_data["properties"].get("player") == "yes"
                     or obj_data["properties"].get("enemy") == "yes"
@@ -157,17 +164,26 @@ class BattleBase:
 
     def draw(self, camera_offset=[0, 0]):
         self.screen.fill((0, 0, 0))  # Xóa màn hình
-        bg_filename_clean = f"{self.level_name}_clean.jpg"
-        bg_path_clean = os.path.join(self.project_root, "assets", "backgrounds", bg_filename_clean)
-        bg_filename = f"{self.level_name}.jpg"
-        bg_path = os.path.join(self.project_root, "assets", "backgrounds", bg_filename)
-        
-        selected_bg_path = bg_path_clean if os.path.exists(bg_path_clean) else bg_path
-        
-        if os.path.exists(selected_bg_path):
-            bg = pygame.image.load(selected_bg_path).convert()
-            bg = pygame.transform.scale(bg, (self.screen.get_width(), self.screen.get_height()))
-            self.screen.blit(bg, (-camera_offset[0], -camera_offset[1]))
+        # Load và cache background một lần duy nhất
+        if not hasattr(self, '_bg_surface'):
+            bg_filename_clean = f"{self.level_name}_clean.jpg"
+            bg_path_clean = os.path.join(self.project_root, "assets", "backgrounds", bg_filename_clean)
+            bg_filename = f"{self.level_name}.jpg"
+            bg_path = os.path.join(self.project_root, "assets", "backgrounds", bg_filename)
+            
+            selected_bg_path = bg_path_clean if os.path.exists(bg_path_clean) else bg_path
+            
+            if os.path.exists(selected_bg_path):
+                bg_raw = pygame.image.load(selected_bg_path).convert()
+                # Scale background cho phủ đúng toàn bộ map
+                map_pixel_w = self.map_width * self.tile_width
+                map_pixel_h = self.map_height * self.tile_height
+                self._bg_surface = pygame.transform.smoothscale(bg_raw, (map_pixel_w, map_pixel_h))
+            else:
+                self._bg_surface = None
+
+        if self._bg_surface:
+            self.screen.blit(self._bg_surface, (-camera_offset[0], -camera_offset[1]))
 
         for layer_idx, layer in enumerate(self.tile_layers):
             if layer_idx < len(self.tile_layers_visibility) and not self.tile_layers_visibility[layer_idx]:

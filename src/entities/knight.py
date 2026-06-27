@@ -28,6 +28,8 @@ class Knight(pygame.sprite.Sprite):
         self.update_time = pygame.time.get_ticks()
         self.attack_frame = 0
         self.jump_start_y = y
+        self.jump_count = 0
+        self.max_jumps = 2
 
         for action in self.animation_types:
             sprite_list = []
@@ -63,7 +65,7 @@ class Knight(pygame.sprite.Sprite):
 
         if not on_ground:
             self.in_air = True
-            print("[Knight] Không có nền gnd, knight sẽ rơi")
+            print("[Knight] No gnd found, knight will fall")
 
     def load_sprite(self, action):
         action_folder = action
@@ -83,7 +85,7 @@ class Knight(pygame.sprite.Sprite):
         self.animation_list[action_index] = sprite_list
         self.frame_index = 0
 
-    def move(self, left, right):
+    def move(self, left, right, up=False, down=False):
         map_width_px = self.battle_base.map_width * self.battle_base.tile_width
         map_height_px = self.battle_base.map_height * self.battle_base.tile_height
 
@@ -97,51 +99,76 @@ class Knight(pygame.sprite.Sprite):
             dx = self.speed
             self.flip = False
             self.direction = 1
-        if self.jump and not self.in_air:
-            self.vel_y = -13
-            self.jump = False
-            self.in_air = True
-            self.jump_start_y = self.rect.y
 
-        self.vel_y += 0.75
-        if self.vel_y > 10:
-            self.vel_y = 10
-        dy += self.vel_y
+        # Check ladder collision
+        on_ladder = False
+        if hasattr(self.battle_base, "ladder_objects"):
+            for lad in self.battle_base.ladder_objects:
+                lad_rect = pygame.Rect(lad["x"], lad["y"], lad["width"], lad["height"])
+                if self.rect.colliderect(lad_rect):
+                    on_ladder = True
+                    break
+
+        if on_ladder:
+            if up:
+                dy = -self.speed
+                self.vel_y = 0
+            elif down:
+                dy = self.speed
+                self.vel_y = 0
+            else:
+                dy = 0
+                self.vel_y = 0
+            self.in_air = False
+            self.jump_count = 0
+        else:
+            if not self.in_air:
+                self.jump_count = 0
+            
+            if self.jump:
+                if self.jump_count < self.max_jumps:
+                    self.vel_y = -13
+                    self.in_air = True
+                    self.jump_count += 1
+                    self.jump_start_y = self.rect.y
+                self.jump = False
+
+            self.vel_y += 0.75
+            if self.vel_y > 10:
+                self.vel_y = 10
+            dy += self.vel_y
 
         prev_x = self.rect.x
         self.rect.x += dx
         self.check_collision('horizontal', dx)
 
         self.rect.y += dy
-        on_ground = self.check_collision('vertical', dy)
+        if on_ladder:
+            on_ground = False
+        else:
+            on_ground = self.check_collision('vertical', dy)
 
         # Kiểm tra va chạm trần khi nhảy
         if self.vel_y < 0:
-            col_left = (self.rect.left) // self.battle_base.tile_width
-            col_right = (self.rect.right - 1) // self.battle_base.tile_width
             map_width = self.battle_base.map_width
             layer_ground = self.battle_base.tile_layers[1]
+            center_col = self.rect.centerx // self.battle_base.tile_width
             hit_ceiling = False
-            for col in range(col_left, col_right + 1):
-                for row in [13, 19, 25]:
-                    idx = row * map_width + col
-                    if idx < len(layer_ground) and layer_ground[idx] >= 229:
-                        tile_rect = pygame.Rect(col * self.battle_base.tile_width, row * self.battle_base.tile_height, self.battle_base.tile_width, self.battle_base.tile_height)
-                        if self.rect.colliderect(tile_rect):
-                            self.rect.top = tile_rect.bottom
-                            self.vel_y = 0
-                            hit_ceiling = True
-                            break
-                    if hit_ceiling:
+            for row in [13, 19, 25]:
+                idx = row * map_width + center_col
+                if idx < len(layer_ground) and layer_ground[idx] >= 229:
+                    tile_rect = pygame.Rect(center_col * self.battle_base.tile_width, row * self.battle_base.tile_height, self.battle_base.tile_width, self.battle_base.tile_height)
+                    if self.rect.colliderect(tile_rect):
+                        self.rect.top = tile_rect.bottom
+                        self.vel_y = 0
+                        hit_ceiling = True
                         break
-                if hit_ceiling:
-                    break
             if not hit_ceiling:
                 for layer in self.battle_base.object_layers:
                     for obj in layer:
                         if obj.get("name") == "objGround":
                             obj_rect = pygame.Rect(obj["x"], obj["y"], obj["width"], obj["height"])
-                            if self.rect.colliderect(obj_rect):
+                            if self.rect.colliderect(obj_rect) and obj_rect.left < self.rect.centerx < obj_rect.right:
                                 self.rect.top = obj_rect.bottom
                                 self.vel_y = 0
                                 hit_ceiling = True
@@ -152,12 +179,16 @@ class Knight(pygame.sprite.Sprite):
         if not on_ground and prev_x // self.battle_base.tile_width != self.rect.x // self.battle_base.tile_width:
             self.in_air = True
 
-        # Kiểm tra nếu rơi ra khỏi màn hình
-        if self.rect.top > map_height_px or self.rect.bottom < 0:
-            self.health = 0
-            self.alive = False
-            self.update_action(3)  # Chuyển sang trạng thái Death
-            print(f"Knight rơi ra khỏi màn hình tại y={self.rect.y}, health={self.health}")
+        # Giới hạn vị trí không cho rơi khỏi màn hình
+        self.rect.x = max(0, min(self.rect.x, map_width_px - self.rect.width))
+        
+        if self.rect.bottom > map_height_px:
+            self.rect.bottom = map_height_px
+            self.vel_y = 0
+            self.in_air = False
+        elif self.rect.top < 0:
+            self.rect.top = 0
+            self.vel_y = 0
 
         print(f"Knight pos: {self.rect.x}, {self.rect.y}, vel_y={self.vel_y}, rect.bottom={self.rect.bottom}")
 
@@ -176,11 +207,12 @@ class Knight(pygame.sprite.Sprite):
                         self.vel_y = 0
                         self.in_air = False
                         on_ground = True
-                        print(f"[Knight] Đáp xuống nền/tường tại y={rect.top}")
+                        # print(f"[Knight] Hit ground/wall at y={rect.top}")
                     elif value < 0:  # Đang nhảy lên
-                        self.rect.top = rect.bottom
-                        self.vel_y = 0
-                        print(f"[Knight] Đụng trần tại y={rect.bottom}")
+                        if rect.left < self.rect.centerx < rect.right:
+                            self.rect.top = rect.bottom
+                            self.vel_y = 0
+                            print(f"[Knight] Đụng trần tại y={rect.bottom}")
                     break
 
             if value > 0 and not on_ground:
@@ -193,12 +225,13 @@ class Knight(pygame.sprite.Sprite):
                 rect = pygame.Rect(obj["x"], obj["y"], obj["width"], obj["height"])
                 if self.rect.colliderect(rect):
                     if value > 0:  # Đi sang phải
-                        self.rect.right = rect.left
-                        print(f"[Knight] Va tường phải tại x={rect.left}")
+                        if rect.left >= self.rect.left:
+                            self.rect.right = rect.left
+                            break
                     elif value < 0:  # Đi sang trái
-                        self.rect.left = rect.right
-                        print(f"[Knight] Va tường trái tại x={rect.right}")
-                    break
+                        if rect.right <= self.rect.right:
+                            self.rect.left = rect.right
+                            break
 
         return on_ground
 

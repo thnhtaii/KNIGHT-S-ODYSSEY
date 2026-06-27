@@ -15,6 +15,8 @@ from src.scenes.battle_level1 import BattleLevel1
 from src.scenes.battle_level2 import BattleLevel2
 from src.scenes.battle_level3 import BattleLevel3
 from src.scenes.battle_level4 import BattleLevel4
+from src.scenes.battle_level5 import BattleLevel5
+from src.scenes.battle_level6 import BattleLevel6
 from src.scenes.battle_boss import BattleBoss
 from src.ui.health_bar import HealthBar  
 
@@ -25,9 +27,9 @@ def main():
     screen = pygame.display.set_mode((800, 608))
     pygame.display.set_caption("KNIGHT'S ODYSSEY")
 
-    # Khởi tạo thanh máu và danh sách màn mở khóa (mở khóa sẵn cả 4 màn để test)
+    # Khởi tạo thanh máu và danh sách màn mở khóa (mở khóa sẵn cả 6 màn để test)
     player_health = 100
-    unlocked_levels = [1, 2, 3, 4]  # Mở khóa sẵn cả 4 màn để test
+    unlocked_levels = [1, 2, 3, 4, 5, 6]  # Mở khóa sẵn cả 6 màn để test
 
     health_bar = HealthBar(20, 20, 140, 20, player_health)
 
@@ -83,7 +85,34 @@ def main():
             battle = BattleLevel4(screen, health_bar, player_health)
             result = battle.run()
             if result == "win":
-                # Không cần mở khóa level mới vì Level 4 là màn cuối hiện tại
+                if 5 not in unlocked_levels:
+                    unlocked_levels.append(5)
+                current_scene = "menu"
+            elif result == "menu":
+                current_scene = "menu"
+            elif result == "quit":
+                current_scene = "quit"
+            else:
+                current_scene = result
+
+        elif current_scene == "level5":
+            battle = BattleLevel5(screen, health_bar, player_health)
+            result = battle.run()
+            if result == "win":
+                if 6 not in unlocked_levels:
+                    unlocked_levels.append(6)
+                current_scene = "menu"
+            elif result == "menu":
+                current_scene = "menu"
+            elif result == "quit":
+                current_scene = "quit"
+            else:
+                current_scene = result
+
+        elif current_scene == "level6":
+            battle = BattleLevel6(screen, health_bar, player_health)
+            result = battle.run()
+            if result == "win":
                 current_scene = "menu"
             elif result == "menu":
                 current_scene = "menu"
