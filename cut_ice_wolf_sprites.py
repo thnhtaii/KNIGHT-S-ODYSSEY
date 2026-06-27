@@ -1,175 +1,118 @@
 """
-Script to cut Ice Wolf sprite sheet into individual frames.
-Sprite sheet: 1024 x 885 pixels (JPG format with checkered background)
-
-Uses flood-fill from edges to remove background while preserving the wolf body.
-Crop regions are carefully adjusted to exclude text labels.
+Script to cut the new White Wolf sprite sheet into individual frames.
+New sprite sheet: 1024 x 430 pixels, RGBA.
+Layout:
+  IDLE:   4 frames, y=[56,117], x in [14, 128], [128, 242], [278, 386], [398, 507]
+  WALK:   4 frames, y=[56,117], x in [534, 647], [647, 760], [772, 879], [893, 999]
+  RUN:    4 frames, y=[155,226], x in [21, 129], [140, 248], [263, 372], [383, 496]
+  JUMP:   4 frames, y=[155,226], x in [496, 609], [651, 757], [769, 881], [881, 994]
+  ATTACK: 4 frames, y=[250,330], x in [18, 127], [138, 254], [254, 371], [382, 495]
+  HURT:   2 frames, y=[330,422], x in [14, 114], [114, 250]
+  DIE:    3 frames, y=[330,422], x in [280, 386], [423, 590], [590, 778]
 """
 
-from PIL import Image, ImageFilter
+from PIL import Image
 import os
 import numpy as np
-from collections import deque
-
 
 def cut_sprites():
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    sheet_path = os.path.join(script_dir, 'assets', 'sprites', 'ice_wolf', 'spritesheet.jpg')
+    sheet_path = os.path.join(script_dir, 'assets', 'sprites', 'ice_wolf', 'spritesheet.png')
     output_base = os.path.join(script_dir, 'assets', 'sprites', 'ice_wolf')
 
     sheet = Image.open(sheet_path).convert("RGBA")
     w, h = sheet.size
-    print(f"Sprite sheet size: {w}x{h}")
+    print(f"New Sprite sheet size: {w}x{h}")
 
-    # Adjusted bounding boxes - exclude text labels at top of each row
-    # Text labels ("ICE WOLF HERO", "IDLE", "RUN", etc.) occupy roughly first 28 rows
-    # of each section. Wolf bodies start below the text.
     animations = {
         'idle': [
-            # Row y=28-164, wolves start around y=30
-            (21, 30, 153, 164),
-            (163, 30, 317, 164),
-            (328, 30, 454, 164),
-            (467, 30, 613, 164),
+            (14, 56, 128, 117),
+            (128, 56, 242, 117),
+            (278, 56, 386, 117),
+            (398, 56, 507, 117)
         ],
         'walk': [
-            # Row y=168-297, text "WALK" at top
-            (21, 180, 167, 297),
-            (186, 180, 335, 297),
-            (348, 180, 497, 297),
-            (511, 180, 654, 297),
-            (670, 180, 814, 297),
+            (534, 56, 647, 117),
+            (647, 56, 760, 117),
+            (772, 56, 879, 117),
+            (893, 56, 999, 117)
         ],
         'run': [
-            # Row y=300-429, text "RUN" at top
-            (21, 312, 168, 429),
-            (186, 312, 337, 429),
-            (354, 312, 504, 429),
-            (521, 312, 670, 429),
-            (687, 312, 836, 429),
-            (856, 312, 1007, 429),
-        ],
-        'attack': [
-            # Row y=435-557, text "ATTACK" at top
-            (20, 447, 177, 557),
-            (208, 447, 408, 557),
-            (423, 447, 563, 557),
-            (576, 447, 731, 557),
-            (761, 447, 858, 557),
+            (21, 155, 129, 226),
+            (140, 155, 248, 226),
+            (263, 155, 372, 226),
+            (383, 155, 496, 226)
         ],
         'jump': [
-            # Row y=560-689, text "JUMP" at top
-            (30, 572, 164, 689),
-            (184, 572, 365, 689),
-            (387, 572, 498, 689),
+            (496, 155, 609, 226),
+            (651, 155, 757, 226),
+            (769, 155, 881, 226),
+            (881, 155, 994, 226)
+        ],
+        'attack': [
+            (18, 250, 127, 330),
+            (138, 250, 254, 330),
+            (254, 250, 371, 330),
+            (382, 250, 495, 330)
         ],
         'hurt': [
-            # Same row as jump, right portion, text "HURT" at top
-            (598, 572, 762, 689),
-            (782, 572, 885, 689),
+            (14, 352, 114, 411),
+            (114, 352, 250, 411)
         ],
         'die': [
-            # Row y=770-860, text "DIE" at top (only 3 frames)
-            (20, 782, 200, 860),
-            (210, 782, 395, 860),
-            (405, 782, 600, 860),
-        ],
+            (280, 352, 386, 411),
+            (423, 352, 590, 411),
+            (590, 352, 778, 411)
+        ]
     }
-
+    
+    # We will first clear existing pngs in these directories to avoid mixing old and new sprites
+    for anim_name in animations.keys():
+        anim_dir = os.path.join(output_base, anim_name)
+        if os.path.exists(anim_dir):
+            for file in os.listdir(anim_dir):
+                if file.endswith('.png'):
+                    os.remove(os.path.join(anim_dir, file))
+        os.makedirs(anim_dir, exist_ok=True)
+        
     for anim_name, frames in animations.items():
         out_dir = os.path.join(output_base, anim_name)
-        os.makedirs(out_dir, exist_ok=True)
-
+        
         for i, (x1, y1, x2, y2) in enumerate(frames):
-            x1 = max(0, x1)
-            y1 = max(0, y1)
-            x2 = min(w, x2)
-            y2 = min(h, y2)
-
             frame = sheet.crop((x1, y1, x2, y2))
-            frame = remove_checkered_bg_floodfill(frame)
+            frame = remove_checkered_bg(frame)
             frame = trim_transparent(frame)
-
-            if frame.size[0] < 15 or frame.size[1] < 15:
-                print(f"  WARNING: {anim_name}/{i} too small ({frame.size}), using untrimmed")
-                frame = sheet.crop((x1, y1, x2, y2))
-                frame = remove_checkered_bg_floodfill(frame)
-
+            
             filename = f"{anim_name.capitalize()}_{i}.png"
             frame.save(os.path.join(out_dir, filename))
             print(f"  Saved {anim_name}/{filename} ({frame.size[0]}x{frame.size[1]})")
 
-    print("\nDone cutting sprites!")
+    print("\nDone cutting new sprites!")
 
 
-def remove_checkered_bg_floodfill(img):
-    """Remove the checkered background using flood-fill from edges.
-    
-    The checkered BG has two alternating colors that are very close to the 
-    ice wolf's body color. Instead of color-matching everything, we flood-fill 
-    from the image edges to only remove connected background regions.
-    """
+def remove_checkered_bg(img):
+    """Remove the blue-gray checkered background of the new sprite sheet."""
     data = np.array(img)
-    h, w = data.shape[:2]
+    r = data[:,:,0].astype(int)
+    g = data[:,:,1].astype(int)  
+    b = data[:,:,2].astype(int)
     
-    r = data[:,:,0].astype(float)
-    g = data[:,:,1].astype(float)
-    b = data[:,:,2].astype(float)
-    
-    # Background checker colors (JPG-compressed, blurred):
-    # Light: ~(126-150, 141-165, 157-180)
-    # Dark:  ~(118-130, 136-145, 150-160)
+    # Tolerance for checkerboard color matching
     tol = 18
     
-    # Checker color 1 (lighter)
-    c1 = (np.abs(r - 140) < tol+5) & (np.abs(g - 156) < tol+5) & (np.abs(b - 172) < tol+5)
-    # Checker color 2 (darker)
-    c2 = (np.abs(r - 123) < tol) & (np.abs(g - 141) < tol) & (np.abs(b - 156) < tol)
-    # Wider mid-range (general checker area)
-    mid = (r > 110) & (r < 155) & (g > 130) & (g < 170) & (b > 145) & (b < 185)
-    # Check blue-gray ratio typical of checker
-    bg_ratio = (np.abs(g - r - 16) < 10) & (np.abs(b - g - 16) < 10)
-    checker = mid & bg_ratio
+    # Light checker: ~(146, 160, 171)
+    light = (np.abs(r - 146) < tol) & (np.abs(g - 160) < tol) & (np.abs(b - 171) < tol)
+    # Dark checker: ~(120, 136, 149)
+    dark = (np.abs(r - 120) < tol) & (np.abs(g - 136) < tol) & (np.abs(b - 149) < tol)
+    # Background top bar/border matching: (64, 82, 94)
+    border = (np.abs(r - 64) < tol) & (np.abs(g - 82) < tol) & (np.abs(b - 94) < tol)
+    # White / text matching
+    white = (r > 220) & (g > 220) & (b > 220)
     
-    # White (remaining text or bright spots)
-    white = (r > 200) & (g > 200) & (b > 200)
-    # Near-black (text)
-    black = (r < 40) & (g < 40) & (b < 40)
+    # Combine background masks
+    # Keep wolf pixels that might overlap white by checking if they are not surrounded by blue-gray
+    bg_mask = light | dark | border | white
     
-    could_be_bg = c1 | c2 | checker | white | black
-    
-    # Flood-fill from edges
-    visited = np.zeros((h, w), dtype=bool)
-    bg_mask = np.zeros((h, w), dtype=bool)
-    queue = deque()
-    
-    # Seed from all edge pixels that match background
-    for x in range(w):
-        for y_edge in [0, h-1]:
-            if could_be_bg[y_edge, x] and not visited[y_edge, x]:
-                queue.append((y_edge, x))
-                visited[y_edge, x] = True
-    for y in range(h):
-        for x_edge in [0, w-1]:
-            if could_be_bg[y, x_edge] and not visited[y, x_edge]:
-                queue.append((y, x_edge))
-                visited[y, x_edge] = True
-    
-    # BFS flood fill with 8-connectivity
-    while queue:
-        cy, cx = queue.popleft()
-        bg_mask[cy, cx] = True
-        
-        for dy in [-1, 0, 1]:
-            for dx in [-1, 0, 1]:
-                if dy == 0 and dx == 0:
-                    continue
-                ny, nx = cy + dy, cx + dx
-                if 0 <= ny < h and 0 <= nx < w and not visited[ny, nx] and could_be_bg[ny, nx]:
-                    visited[ny, nx] = True
-                    queue.append((ny, nx))
-    
-    # Set background to transparent
     data[bg_mask, 3] = 0
     
     return Image.fromarray(data)
