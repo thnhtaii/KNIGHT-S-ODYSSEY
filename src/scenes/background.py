@@ -15,7 +15,7 @@ class Background:
 
         current_dir = os.path.dirname(os.path.abspath(__file__))
         project_root = os.path.dirname(os.path.dirname(current_dir))
-        bg_path = os.path.join(project_root, 'assets', 'backgrounds', '1.jpg')
+        bg_path = os.path.join(project_root, 'assets', 'backgrounds', '1.png')
         button_path = os.path.join(project_root, 'assets', 'icons', 'start_button.png')
 
         music_path = os.path.join(project_root, 'assets', 'audio', 'music_theme', 'MusicMenu.mp3')
@@ -56,25 +56,38 @@ class Background:
             self.text_font = pygame.font.Font(None, text_size)
 
     def update_button_image(self):
-        size = (230, 180) if self.button_pressed else (250, 200)
+        size = (110, 36) if self.button_pressed else (130, 44)
         self.start_button_image = pygame.transform.scale(self.original_button_image, size)
-        self.start_button_rect = self.start_button_image.get_rect(center=(self.WINDOW_WIDTH // 2, self.WINDOW_HEIGHT // 2 + 100))
+        self.start_button_rect = self.start_button_image.get_rect(center=(self.WINDOW_WIDTH // 2 + 80, self.WINDOW_HEIGHT - 80))
 
     def draw_background(self):
         self.screen.blit(self.bg_image, (0, 0))
 
     def draw_text(self):
-        title_text = self.title_font.render("STICKY MAN", True, (255, 0, 0))
-        title_shadow = self.title_font.render("STICKY MAN", True, (0, 0, 0))
-        title_rect = title_text.get_rect(center=(self.WINDOW_WIDTH // 2, self.WINDOW_HEIGHT // 4))
-        shadow_rect = title_shadow.get_rect(center=(title_rect.centerx + 4, title_rect.centery + 4))
-        self.screen.blit(title_shadow, shadow_rect)
-        self.screen.blit(title_text, title_rect)
+        pass # The title "KNIGHT'S ODYSSEY" is already drawn directly on the new background image!
 
     def draw_button(self):
-        self.screen.blit(self.start_button_image, self.start_button_rect)
-        text = self.text_font.render("START", True, (255, 255, 255))
-        text_rect = text.get_rect(center=self.start_button_rect.center)
+        rect = self.start_button_rect
+        
+        # 1. Vẽ bóng đổ màu đen bên dưới (tạo chiều sâu 3D)
+        pygame.draw.rect(self.screen, (5, 5, 10), (rect.x + 3, rect.y + 3, rect.width, rect.height), border_radius=4)
+        
+        # 2. Màu nền nút (Màu xanh đen/navy mờ sang trọng khớp với tuyết/bóng tối)
+        fill_color = (15, 20, 30) if self.button_pressed else (22, 28, 42)
+        pygame.draw.rect(self.screen, fill_color, rect, border_radius=4)
+        
+        # 3. Viền nút màu xanh ngọc / Cyan phát sáng
+        border_color = (0, 180, 180) if self.button_pressed else (0, 240, 240)
+        pygame.draw.rect(self.screen, border_color, rect, width=2, border_radius=4)
+        
+        # Viền nhỏ bên trong tạo cảm giác ma thuật
+        inner_rect = rect.inflate(-6, -6)
+        pygame.draw.rect(self.screen, (30, 60, 80), inner_rect, width=1, border_radius=2)
+        
+        # 4. Vẽ chữ START với màu xanh băng tuyết (Ice Blue) tương phản cực cao
+        text_color = (0, 240, 240) if self.button_pressed else (210, 255, 255)
+        text = self.text_font.render("START", True, text_color)
+        text_rect = text.get_rect(center=rect.center)
         self.screen.blit(text, text_rect)
 
     def run(self):

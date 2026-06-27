@@ -92,6 +92,8 @@ class Zombie(Slime):
 
                 print(f"[{self.name}] Zombie tấn công! Knight còn {player.health} máu")
                 self.last_attack_time = current_time
+                from src.components.ai_stats_tracker import AIStatsTracker
+                AIStatsTracker.log_attack(self.name, 15)
                 
                 # Kích hoạt hoạt ảnh tấn công (Action 4)
                 self.action = 4
@@ -165,6 +167,8 @@ class Zombie(Slime):
                 self.bfs_path = bfs_path(current_tile, goal_tile, grid)
                 self.path_index = 0
                 self.last_goal_tile = goal_tile
+                from src.components.ai_stats_tracker import AIStatsTracker
+                AIStatsTracker.log_pathfinding(self.name)
 
             if self.bfs_path and self.path_index < len(self.bfs_path):
                 tx, ty = self.bfs_path[self.path_index]
@@ -231,6 +235,8 @@ class Zombie(Slime):
                 self.andor_plan = and_or_graph_search(current_tile, goal_tile, grid)
                 self.last_goal_tile = goal_tile
                 self.current_step_target_tile = None
+                from src.components.ai_stats_tracker import AIStatsTracker
+                AIStatsTracker.log_pathfinding(self.name)
                 
             if self.andor_plan and len(self.andor_plan) == 2:
                 action, plans_dict = self.andor_plan
@@ -316,6 +322,8 @@ class Zombie(Slime):
                 from src.ai.algorithms import belief_a_star
                 self.belief_actions = belief_a_star(s1, s2, goal_tile, grid)
                 self.belief_action_index = 0
+                from src.components.ai_stats_tracker import AIStatsTracker
+                AIStatsTracker.log_pathfinding(self.name)
 
             # Thực thi chuỗi hành động định vị
             if self.belief_actions and self.belief_action_index < len(self.belief_actions):
@@ -374,6 +382,8 @@ class Zombie(Slime):
         # Tìm chuỗi phím di chuyển ngắn nhất để zombie đến bất kỳ ô nào trong player_beliefs
         from src.ai.algorithms import belief_a_star_goals
         self.belief_actions = belief_a_star_goals(current_tile, current_tile, self.belief_states, grid)
+        from src.components.ai_stats_tracker import AIStatsTracker
+        AIStatsTracker.log_pathfinding(self.name)
         
         if self.belief_actions:
             action = self.belief_actions[0]
@@ -407,7 +417,7 @@ class Zombie(Slime):
         if not self.alive or not self.belief_states:
             return
             
-        if "belief_state_and_goal" not in self.name:
+        if "belief_state_and_goal" not in self.name and "Belief + Goal" not in self.name and getattr(self, 'algo', '') != "belief_state_and_goal":
             return
             
         color = (255, 100, 0, 90) # Cam mờ cho vị trí player nghi ngờ

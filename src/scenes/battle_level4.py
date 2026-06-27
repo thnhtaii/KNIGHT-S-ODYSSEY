@@ -21,10 +21,12 @@ class BattleLevel4(BattleBase):
         self.player = None
         self.slime_list = []  # Lưu zombie để LevelLogicManager tương thích
         self.logic_manager = LevelLogicManager(self.slime_list)
+        from src.components.ai_stats_tracker import AIStatsTracker
+        AIStatsTracker.reset("Level 4")
 
         current_dir = os.path.dirname(os.path.abspath(__file__))
         project_root = os.path.dirname(os.path.dirname(current_dir))
-        music_path = os.path.join(project_root, 'assets', 'audio', 'music_theme', 'MusicLV3.mp3')
+        music_path = os.path.join(project_root, 'assets', 'audio', 'music_theme', 'MusicLV4.mp3')
         
         self.music_manager = MusicManager()
         self.music_manager.play_music(music_path)
@@ -62,7 +64,13 @@ class BattleLevel4(BattleBase):
                     move_area = pygame.Rect(16, y - 50, 1248, 100)
                 
                 zombie = Zombie(x, y, scale=0.35, speed=1.5, battle_base=self, move_area=move_area)
-                zombie.name = f"zombie_{algo_name}"
+                zombie.algo = algo_name
+                display_algo = "And-Or" if algo_name == "and_or_search" else (
+                    "Belief State" if algo_name == "belief_state" else (
+                        "Belief + Goal" if algo_name == "belief_state_and_goal" else algo_name
+                    )
+                )
+                zombie.name = f"Zombie {len(self.slime_list) + 1} ({display_algo})"
                 self.slime_list.append(zombie)
 
         if not self.player:
@@ -188,6 +196,11 @@ class BattleLevel4(BattleBase):
             if self.door_pos:
                 door_rect = pygame.Rect(self.door_pos[0], self.door_pos[1] - 64, 64, 64)
                 if self.logic_manager.is_door_unlocked() and self.logic_manager.check_victory(self.player.rect, door_rect):
+                    from src.ui.ai_dashboard import AIDashboard
+                    from src.components.ai_stats_tracker import AIStatsTracker
+                    dashboard = AIDashboard(self.screen, AIStatsTracker.get_stats())
+                    dashboard.run()
+                    
                     victory_screen = GameVictoryScreen(self.screen)
                     result = victory_screen.run()
                     if result == "menu":
@@ -320,13 +333,14 @@ class BattleLevel4(BattleBase):
                                 slime.action = 0
                                 slime.frame_index = 0
                              
-                            if "and_or_search" in slime.name:
+                            algo = getattr(slime, 'algo', '')
+                            if algo == "and_or_search":
                                 slime.update_andor(self.player, self.grid, self.margin_data)
-                            elif "belief_state_and_goal" in slime.name:
+                            elif algo == "belief_state_and_goal":
                                 slime.update_belief_state_and_goal(self.player, self.grid, self.margin_data)
-                            elif "belief_state" in slime.name:
+                            elif algo == "belief_state":
                                 slime.update_belief_state(self.player, self.grid, self.margin_data)
-                            elif "bfs" in slime.name:
+                            elif algo == "bfs":
                                 slime.update_bfs(self.player, self.grid, self.margin_data)
                             else:
                                 slime.move()
@@ -346,6 +360,12 @@ class BattleLevel4(BattleBase):
             if not self.player.alive:
                 self.player_health = 0
                 self.health_bar.set_health(self.player_health)
+                
+                from src.ui.ai_dashboard import AIDashboard
+                from src.components.ai_stats_tracker import AIStatsTracker
+                dashboard = AIDashboard(self.screen, AIStatsTracker.get_stats())
+                dashboard.run()
+                
                 game_over_screen = GameOverScreen(self.screen)
                 result = game_over_screen.run()
                 if result == "restart":
@@ -370,18 +390,22 @@ class BattleLevel4(BattleBase):
         self.sound_radius = 0
         self.sound_pos = None
         
-        # 0: Idle, 1: Walk/Run, 2: Jump, 3: Attack, 6: Crouch, 7: Dash, 10: Jump attack
-        if self.player.action == 1: # Chạy
-            self.sound_radius = 96 # 6 ô
-            self.sound_pos = self.player.rect.center
-            self.last_sound_ticks = current_time
-        elif self.player.action in [2, 3, 10]: # Nhảy/Tấn công
+        # Kiểm tra trạng thái thực tế của người chơi thay vì chỉ kiểm tra action hoạt ảnh
+        is_moving = self.moving_left or self.moving_right or getattr(self.player, 'dash', False) or self.player.action == 7
+        is_jumping_or_attacking = self.player.in_air or getattr(self.player, 'attack', False) or self.player.action in [2, 3, 10]
+        is_crouching = getattr(self.player, 'crouch', False) or self.player.action == 6
+        
+        if is_crouching:
+            self.sound_radius = 0
+            self.sound_pos = None
+        elif is_jumping_or_attacking:
             self.sound_radius = 192 # 12 ô
             self.sound_pos = self.player.rect.center
             self.last_sound_ticks = current_time
-        elif self.player.action == 6: # Đi khom người rón rén
-            self.sound_radius = 0
-            self.sound_pos = None
+        elif is_moving:
+            self.sound_radius = 96 # 6 ô
+            self.sound_pos = self.player.rect.center
+            self.last_sound_ticks = current_time
             
         # Cập nhật Belief State của Player
         if self.sound_radius > 0:

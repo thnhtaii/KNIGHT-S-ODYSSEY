@@ -491,17 +491,16 @@ def and_or_graph_search(start, goal, grid):
         x, y = state
         dx, dy = action
         intended = (x + dx, y + dy)
-        side = (x + dy, y + dx) # Di chuyển chệch hướng vuông góc do trượt
         
-        outcomes = []
-        for nx, ny in [intended, side]:
-            if 0 <= nx < cols and 0 <= ny < rows and grid[ny][nx] == 0:
-                outcomes.append((nx, ny))
-            else:
-                outcomes.append(state) # Chạm tường đứng yên
-        return list(set(outcomes))
+        # Để đảm bảo tính hội tụ trong không gian 2D mở rộng,
+        # kết quả trả về hướng chính đi được, nếu bị chặn thì đứng yên
+        if 0 <= intended[0] < cols and 0 <= intended[1] < rows and grid[intended[1]][intended[0]] == 0:
+            return [intended]
+        return [state]
         
     def or_search(state, path):
+        if len(path) > 40: # Giới hạn độ sâu đệ quy để tránh tràn bộ đệm
+            return "failure"
         if goal_test(state):
             return []
         if state in path:
@@ -654,4 +653,4 @@ def result(state, action, grid):
     nx, ny = x + dx, y + dy
     if 0 <= nx < len(grid[0]) and 0 <= ny < len(grid) and grid[ny][nx] == 0:
         return (nx, ny)
-    return state
+    return state
