@@ -73,8 +73,12 @@ class IceWolf(pygame.sprite.Sprite):
             self.animation_list.append(temp_list)
 
         self.image = self.animation_list[0][0]
-        self.rect = self.image.get_rect()
+        # Custom tight collision bounding box (independent of the padded image size)
+        rect_w = int(75 * scale)
+        rect_h = int(45 * scale)
+        self.rect = pygame.Rect(0, 0, rect_w, rect_h)
         self.rect.bottomleft = (x, y)
+
 
     def _is_target_changed(self, new_goal_tile):
         """Check if the pathfinding goal has changed significantly."""
@@ -292,4 +296,7 @@ class IceWolf(pygame.sprite.Sprite):
     def draw(self, screen):
         """Draw the wolf on screen."""
         if self.alive or self.action == 3:
-            screen.blit(pygame.transform.flip(self.image, self.flip, False), self.rect)
+            draw_x = self.rect.centerx - self.image.get_width() // 2
+            draw_y = self.rect.bottom - self.image.get_height()
+            screen.blit(pygame.transform.flip(self.image, self.flip, False), (draw_x, draw_y))
+

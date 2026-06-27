@@ -81,10 +81,11 @@ class BattleLevel2(BattleBase):
                 self.player_group = pygame.sprite.Group(self.player)
             if props.get("enemy") == "yes":
                 move_area = pygame.Rect(x - 150, y - 80, 300, 160)
-                wolf = IceWolf(x, y, 0.3, 2, self, move_area=move_area)
+                wolf = IceWolf(x, y, 0.5, 2, self, move_area=move_area)
                 wolf.name = wolf_algo_names[wolf_count % len(wolf_algo_names)]
                 wolf_count += 1
                 self.wolf_list.append(wolf)
+
 
         if not self.player:
             raise ValueError("Không tìm thấy object 'player' trong map!")
@@ -332,16 +333,17 @@ class BattleLevel2(BattleBase):
 
         for sprite in self.enemy_group:
             if sprite.alive or sprite.action == 3:  # Vẽ Ice Wolf sống hoặc đang trong trạng thái Die
-                draw_x = sprite.rect.x - self.camera_offset[0]
-                draw_y = sprite.rect.y - self.camera_offset[1]
+                draw_x = sprite.rect.centerx - sprite.image.get_width() // 2 - self.camera_offset[0]
+                draw_y = sprite.rect.bottom - sprite.image.get_height() - self.camera_offset[1]
                 flipped = pygame.transform.flip(sprite.image, sprite.flip, False)
                 self.screen.blit(flipped, (draw_x, draw_y))
                 if sprite.alive:
                     font = pygame.font.SysFont("Arial", 12, bold=True)
                     algo_name = sprite.name.replace("wolf_", "").upper()
                     text_surface = font.render(algo_name, True, (100, 200, 255))
-                    text_rect = text_surface.get_rect(center=(draw_x + sprite.rect.width // 2, draw_y - 10))
+                    text_rect = text_surface.get_rect(center=(sprite.rect.centerx - self.camera_offset[0], sprite.rect.top - 10 - self.camera_offset[1]))
                     self.screen.blit(text_surface, text_rect)
+
 
         self.health_bar.draw(self.screen)
 

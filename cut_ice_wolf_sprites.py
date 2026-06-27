@@ -14,6 +14,38 @@ Layout:
 from PIL import Image
 import os
 import numpy as np
+import cv2
+
+def remove_checkered_bg_clean(img, tol=22, min_size=50):
+    """Remove the blue-gray checkered background of the new sprite sheet cleanly
+    using color thresholding and connected components analysis to eliminate noise."""
+    data = np.array(img)
+    r = data[:,:,0].astype(int)
+    g = data[:,:,1].astype(int)  
+    b = data[:,:,2].astype(int)
+    
+    # Light checker: ~(146, 160, 171)
+    light = (np.abs(r - 146) < tol) & (np.abs(g - 160) < tol) & (np.abs(b - 171) < tol)
+    # Dark checker: ~(120, 136, 149)
+    dark = (np.abs(r - 120) < tol) & (np.abs(g - 136) < tol) & (np.abs(b - 149) < tol)
+    # Background top bar/border matching: (64, 82, 94)
+    border = (np.abs(r - 64) < tol) & (np.abs(g - 82) < tol) & (np.abs(b - 94) < tol)
+    
+    # Combine background masks (excluding white matching to preserve wolf's body)
+    bg_mask = light | dark | border
+    data[bg_mask, 3] = 0
+    
+    # Use connected components to clean up isolated noise pixels in background
+    alpha = data[:, :, 3]
+    binary_mask = (alpha > 0).astype(np.uint8)
+    
+    num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(binary_mask)
+    for i in range(1, num_labels):
+        area = stats[i, cv2.CC_STAT_AREA]
+        if area < min_size:
+            data[labels == i, 3] = 0
+            
+    return Image.fromarray(data)
 
 def cut_sprites():
     script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -24,45 +56,46 @@ def cut_sprites():
     w, h = sheet.size
     print(f"New Sprite sheet size: {w}x{h}")
 
+    # Layout coordinates: (x1, y1, x2, y2, cell_start)
     animations = {
         'idle': [
-            (14, 56, 128, 117),
-            (128, 56, 242, 117),
-            (278, 56, 386, 117),
-            (398, 56, 507, 117)
+            (14, 56, 128, 117, 0),
+            (128, 56, 242, 117, 128),
+            (278, 56, 386, 117, 256),
+            (398, 56, 507, 117, 384)
         ],
         'walk': [
-            (534, 56, 647, 117),
-            (647, 56, 760, 117),
-            (772, 56, 879, 117),
-            (893, 56, 999, 117)
+            (534, 56, 647, 117, 512),
+            (647, 56, 760, 117, 640),
+            (772, 56, 879, 117, 768),
+            (893, 56, 999, 117, 896)
         ],
         'run': [
-            (21, 155, 129, 226),
-            (140, 155, 248, 226),
-            (263, 155, 372, 226),
-            (383, 155, 496, 226)
+            (21, 155, 129, 226, 0),
+            (140, 155, 248, 226, 128),
+            (263, 155, 372, 226, 256),
+            (383, 155, 496, 226, 384)
         ],
         'jump': [
-            (496, 155, 609, 226),
-            (651, 155, 757, 226),
-            (769, 155, 881, 226),
-            (881, 155, 994, 226)
+            (496, 155, 609, 226, 512),
+            (651, 155, 757, 226, 640),
+            (769, 155, 881, 226, 768),
+            (881, 155, 994, 226, 896)
         ],
         'attack': [
-            (18, 250, 127, 330),
-            (138, 250, 254, 330),
-            (254, 250, 371, 330),
-            (382, 250, 495, 330)
+            (18, 250, 127, 330, 0),
+            (138, 250, 254, 330, 128),
+            (254, 250, 371, 330, 256),
+            (382, 250, 495, 330, 384)
         ],
         'hurt': [
-            (14, 352, 114, 411),
-            (114, 352, 250, 411)
+            (14, 352, 114, 411, 0),
+            (114, 352, 250, 411, 128)
         ],
         'die': [
-            (280, 352, 386, 411),
-            (423, 352, 590, 411),
-            (590, 352, 778, 411)
+            (280, 352, 386, 411, 256),
+            (423, 352, 590, 411, 384),
+            (590, 352, 778, 411, 512)
         ]
     }
     
@@ -78,53 +111,27 @@ def cut_sprites():
     for anim_name, frames in animations.items():
         out_dir = os.path.join(output_base, anim_name)
         
-        for i, (x1, y1, x2, y2) in enumerate(frames):
+        for i, (x1, y1, x2, y2, cell_start) in enumerate(frames):
             frame = sheet.crop((x1, y1, x2, y2))
-            frame = remove_checkered_bg(frame)
-            frame = trim_transparent(frame)
+            frame_clean = remove_checkered_bg_clean(frame)
+            
+            # Pad to uniform canvas size (200x90) to eliminate jitter
+            canvas = Image.new("RGBA", (200, 90), (0, 0, 0, 0))
+            dx = x1 - cell_start
+            w = x2 - x1
+            h = y2 - y1
+            
+            # Center the cell horizontally in the canvas, align feet with bottom (y=90)
+            paste_x = dx + (200 - 128) // 2
+            paste_y = 90 - h
+            
+            canvas.paste(frame_clean, (paste_x, paste_y))
             
             filename = f"{anim_name.capitalize()}_{i}.png"
-            frame.save(os.path.join(out_dir, filename))
-            print(f"  Saved {anim_name}/{filename} ({frame.size[0]}x{frame.size[1]})")
+            canvas.save(os.path.join(out_dir, filename))
+            print(f"  Saved {anim_name}/{filename} ({canvas.size[0]}x{canvas.size[1]})")
 
     print("\nDone cutting new sprites!")
-
-
-def remove_checkered_bg(img):
-    """Remove the blue-gray checkered background of the new sprite sheet."""
-    data = np.array(img)
-    r = data[:,:,0].astype(int)
-    g = data[:,:,1].astype(int)  
-    b = data[:,:,2].astype(int)
-    
-    # Tolerance for checkerboard color matching
-    tol = 18
-    
-    # Light checker: ~(146, 160, 171)
-    light = (np.abs(r - 146) < tol) & (np.abs(g - 160) < tol) & (np.abs(b - 171) < tol)
-    # Dark checker: ~(120, 136, 149)
-    dark = (np.abs(r - 120) < tol) & (np.abs(g - 136) < tol) & (np.abs(b - 149) < tol)
-    # Background top bar/border matching: (64, 82, 94)
-    border = (np.abs(r - 64) < tol) & (np.abs(g - 82) < tol) & (np.abs(b - 94) < tol)
-    # White / text matching
-    white = (r > 220) & (g > 220) & (b > 220)
-    
-    # Combine background masks
-    # Keep wolf pixels that might overlap white by checking if they are not surrounded by blue-gray
-    bg_mask = light | dark | border | white
-    
-    data[bg_mask, 3] = 0
-    
-    return Image.fromarray(data)
-
-
-def trim_transparent(img):
-    """Trim transparent borders."""
-    bbox = img.getbbox()
-    if bbox:
-        return img.crop(bbox)
-    return img
-
 
 if __name__ == "__main__":
     cut_sprites()
