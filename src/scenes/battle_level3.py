@@ -31,7 +31,7 @@ class BattleLevel3(BattleBase):
 
         # Khởi tạo cửa qua màn
         BGDoor_dir = os.path.join(project_root, 'assets', 'backgrounds')
-        self.BGDoor = pygame.image.load(os.path.join(BGDoor_dir, "BGDoor.png")).convert_alpha()
+        self.BGDoor = pygame.image.load(os.path.join(BGDoor_dir, "level3_door.png")).convert_alpha()
         self.BGDoor = pygame.transform.scale(self.BGDoor, (96, 96))
 
         # Khởi tạo đối tượng từ object layer của map

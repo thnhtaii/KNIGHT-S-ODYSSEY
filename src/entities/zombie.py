@@ -41,8 +41,9 @@ class Zombie(Slime):
         
         # Gán lại image và rect ban đầu
         self.image = self.animation_list[self.action][self.frame_index]
-        self.rect = self.image.get_rect()
-        self.rect.bottomleft = (x, y)
+        # Định nghĩa kích thước hộp va chạm cố định (rộng 44, cao 60)
+        # để Zombie có thể đi qua khe hẹp dưới bệ đỡ (khe hẹp cao 64px)
+        self.rect = pygame.Rect(x, y - 60, 44, 60)
         
         # Biến điều khiển di chuyển AI
         self.bfs_path = []
@@ -100,6 +101,42 @@ class Zombie(Slime):
                 if player.health <= 0:
                     player.check_alive()
 
+    def move(self):
+        if not self.alive:
+            return
+        dx = self.speed * self.direction
+        dy = 0
+        self.vel_y += 0.75
+        if self.vel_y > 10:
+            self.vel_y = 10
+        dy += self.vel_y
+        temp_rect = self.rect.move(dx, dy)
+        if self.move_area and not self.move_area.contains(temp_rect):
+            if temp_rect.left < self.move_area.left or temp_rect.right > self.move_area.right:
+                self.direction *= -1
+                dx = self.speed * self.direction
+            temp_rect = self.rect.move(dx, dy)
+        
+        prev_x = self.rect.x
+        self.rect.x += dx
+        self.check_collision('horizontal', dx)
+        if self.rect.x == prev_x:
+            self.direction *= -1
+            self.flip = (self.direction == -1)
+            
+        self.rect.y += dy
+        self.check_collision('vertical', dy)
+        
+        if self.move_area:
+            if self.rect.left < self.move_area.left:
+                self.rect.left = self.move_area.left
+                self.direction *= -1
+                self.flip = (self.direction == -1)
+            if self.rect.right > self.move_area.right:
+                self.rect.right = self.move_area.right
+                self.direction *= -1
+                self.flip = (self.direction == -1)
+
     def update_bfs(self, player, grid, margin_data):
         if not self.alive:
             return
@@ -133,9 +170,8 @@ class Zombie(Slime):
                 tx, ty = self.bfs_path[self.path_index]
                 target_x = tx * self.battle_base.tile_width + self.battle_base.tile_width // 2
 
-                if self.move_area and (target_x < self.move_area.left or target_x > self.move_area.right):
-                    self.update_action(0)
-                    return
+                if self.move_area:
+                    target_x = max(self.move_area.left, min(target_x, self.move_area.right))
 
                 if (0 <= ty < self.battle_base.map_height and 0 <= tx < self.battle_base.map_width):
                     margin_index = ty * self.battle_base.map_width + tx
@@ -144,6 +180,7 @@ class Zombie(Slime):
                         self.rect.x += self.direction * self.speed
                     else:
                         if abs(self.rect.centerx - target_x) > self.speed:
+                            prev_x = self.rect.x
                             if self.rect.centerx < target_x:
                                 self.rect.x += self.speed
                                 self.flip = False
@@ -153,7 +190,10 @@ class Zombie(Slime):
                                 self.flip = True
                                 self.direction = -1
                             self.check_collision('horizontal', self.speed * self.direction)
+                            if self.rect.x == prev_x:
+                                self.path_index += 1
                         else:
+                            self.rect.centerx = target_x
                             self.path_index += 1
                 self.update_action(1 if self.in_air or abs(self.rect.centerx - target_x) > self.speed else 0)
         else:
@@ -215,12 +255,11 @@ class Zombie(Slime):
                 next_tile = self.current_step_target_tile
                 target_x = next_tile[0] * self.battle_base.tile_width + self.battle_base.tile_width // 2
                 
-                if self.move_area and (target_x < self.move_area.left or target_x > self.move_area.right):
-                    self.update_action(0)
-                    self.current_step_target_tile = None
-                    return
+                if self.move_area:
+                    target_x = max(self.move_area.left, min(target_x, self.move_area.right))
                     
                 if abs(self.rect.centerx - target_x) > self.speed:
+                    prev_x = self.rect.x
                     if self.rect.centerx < target_x:
                         self.rect.x += self.speed
                         self.flip = False
@@ -230,7 +269,11 @@ class Zombie(Slime):
                         self.flip = True
                         self.direction = -1
                     self.check_collision('horizontal', self.speed * self.direction)
+                    if self.rect.x == prev_x:
+                        self.andor_plan = None
+                        self.current_step_target_tile = None
                 else:
+                    self.rect.centerx = target_x
                     # Đã đến ô tiếp theo, cập nhật plan tiếp theo
                     if isinstance(plans_dict, dict) and next_tile in plans_dict:
                         self.andor_plan = plans_dict[next_tile]
@@ -287,10 +330,10 @@ class Zombie(Slime):
                     self.is_calibrated = True
 
                 target_x = ns1[0] * self.battle_base.tile_width + self.battle_base.tile_width // 2
-                if self.move_area and (target_x < self.move_area.left or target_x > self.move_area.right):
-                    self.update_action(0)
-                    return
+                if self.move_area:
+                    target_x = max(self.move_area.left, min(target_x, self.move_area.right))
                 if abs(self.rect.centerx - target_x) > self.speed:
+                    prev_x = self.rect.x
                     if self.rect.centerx < target_x:
                         self.rect.x += self.speed
                         self.flip = False
@@ -300,7 +343,10 @@ class Zombie(Slime):
                         self.flip = True
                         self.direction = -1
                     self.check_collision('horizontal', self.speed * self.direction)
+                    if self.rect.x == prev_x:
+                        self.belief_action_index += 1
                 else:
+                    self.rect.centerx = target_x
                     self.belief_action_index += 1
                 self.update_action(1)
             else:
@@ -336,10 +382,10 @@ class Zombie(Slime):
             
             target_x = tx * self.battle_base.tile_width + self.battle_base.tile_width // 2
             
-            if self.move_area and (target_x < self.move_area.left or target_x > self.move_area.right):
-                self.update_action(0)
-                return
+            if self.move_area:
+                target_x = max(self.move_area.left, min(target_x, self.move_area.right))
             if abs(self.rect.centerx - target_x) > self.speed:
+                prev_x = self.rect.x
                 if self.rect.centerx < target_x:
                     self.rect.x += self.speed
                     self.flip = False
@@ -349,6 +395,10 @@ class Zombie(Slime):
                     self.flip = True
                     self.direction = -1
                 self.check_collision('horizontal', self.speed * self.direction)
+                if self.rect.x == prev_x:
+                    self.belief_actions = []
+            else:
+                self.rect.centerx = target_x
             self.update_action(1)
         else:
             self.update_action(0)
@@ -380,13 +430,7 @@ class Zombie(Slime):
         if self.frame_index >= len(self.animation_list[self.action]):
             self.frame_index = 0
             
-        old_bottom = self.rect.bottom
-        old_centerx = self.rect.centerx
-
         self.image = self.animation_list[self.action][self.frame_index]
-        self.rect = self.image.get_rect()
-        self.rect.bottom = old_bottom
-        self.rect.centerx = old_centerx
 
         self.apply_gravity()
         

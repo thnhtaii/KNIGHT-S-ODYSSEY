@@ -31,7 +31,7 @@ class BattleLevel4(BattleBase):
 
         # Khởi tạo cửa qua màn
         BGDoor_dir = os.path.join(project_root, 'assets', 'backgrounds')
-        self.BGDoor = pygame.image.load(os.path.join(BGDoor_dir, "BGDoor.png")).convert_alpha()
+        self.BGDoor = pygame.image.load(os.path.join(BGDoor_dir, "level4_door.png")).convert_alpha()
         self.BGDoor = pygame.transform.scale(self.BGDoor, (96, 96))
 
         # Khởi tạo đối tượng từ object layer của map
@@ -41,7 +41,8 @@ class BattleLevel4(BattleBase):
             props = obj["properties"]
             
             if props.get("win") == "yes":
-                self.door_pos = (obj["x"], obj["y"])
+                # Dịch chuyển cổng dịch chuyển sang trái 32px để tránh che bệ nhảy
+                self.door_pos = (obj["x"] - 32, obj["y"])
 
             if props.get("player") == "yes":
                 self.player = Knight(x, y, scale=0.35, speed=3, battle_base=self)
@@ -477,9 +478,10 @@ class BattleLevel4(BattleBase):
 
         for sprite in self.enemy_group:
             if sprite.alive or sprite.action == 3:
-                draw_x = sprite.rect.x - self.camera_offset[0]
-                draw_y = sprite.rect.y - self.camera_offset[1]
-                self.screen.blit(pygame.transform.flip(sprite.image, sprite.flip, False), (draw_x, draw_y))
+                flipped_image = pygame.transform.flip(sprite.image, sprite.flip, False)
+                draw_x = sprite.rect.centerx - flipped_image.get_width() // 2 - self.camera_offset[0]
+                draw_y = sprite.rect.bottom - flipped_image.get_height() - self.camera_offset[1]
+                self.screen.blit(flipped_image, (draw_x, draw_y))
                 
                 # Hiển thị tên thuật toán viết hoa nổi trên đầu mỗi Zombie
                 if sprite.alive:
