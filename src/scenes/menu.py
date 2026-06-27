@@ -1,4 +1,5 @@
 import pygame
+import pygame.gfxdraw
 import os
 import math
 from src.components.settings_button import SettingsButton
@@ -9,7 +10,7 @@ class Menu:
         self.running = True
         self.settings_button = SettingsButton(self.screen)
 
-        self.font = pygame.font.SysFont("Stickyman-Battle/assets/fonts/CourierPrime-Regular.ttf", 100)
+        self.font = pygame.font.SysFont("Arial", 22, bold=True)
 
         self.load_background()
 
@@ -21,6 +22,8 @@ class Menu:
             {"id": 2, "unlocked": False},
             {"id": 3, "unlocked": False},
             {"id": 4, "unlocked": False},
+            {"id": 5, "unlocked": False},
+            {"id": 6, "unlocked": False},
         ]
         if unlocked_levels:
             for level in self.levels:
@@ -32,6 +35,7 @@ class Menu:
 
         current_dir = os.path.dirname(os.path.abspath(__file__))
         project_root = os.path.dirname(os.path.dirname(current_dir))
+        self.title_font_path = os.path.join(project_root, 'assets', 'fonts', 'dpcomic.ttf')
         lock_path = os.path.join(project_root, 'assets', 'icons', 'lock.png')
         self.lock_image = pygame.image.load(lock_path).convert_alpha()
 
@@ -53,40 +57,47 @@ class Menu:
         self.create_buttons()
 
     def create_buttons(self):
-        button_w, button_h = 140, 140
-        gap = 20
-        grid_cols, grid_rows = 2, 2
-
-        total_width = grid_cols * button_w + (grid_cols - 1) * gap
-        total_height = grid_rows * button_h + (grid_rows - 1) * gap
-
-        start_x = (self.WINDOW_WIDTH - total_width) // 2
-        start_y = (self.WINDOW_HEIGHT - total_height) // 2
-
+        # Định nghĩa các vị trí map pin đè chính xác lên tâm các vùng địa hình
+        positions = [
+            (100, 310), # Màn 1: Rừng cây
+            (290, 150), # Màn 2: Núi tuyết
+            (325, 390), # Màn 3: Trong lâu đài cũ (Điều chỉnh sát vào trung tâm cổng thành)
+            (500, 300), # Màn 4: Nghĩa địa (Điều chỉnh sát vào chính giữa nghĩa địa và nhà thờ)
+            (650, 420), # Màn 5: Hang rồng/Núi lửa (Điều chỉnh dịch sang phải sát vào lòng núi lửa)
+            (705, 160)  # Màn 6: Tòa tháp cuối cùng cứu công chúa
+        ]
+        button_size = 50
         self.buttons.clear()
-        for i in range(grid_cols * grid_rows):
-            col = i % grid_cols
-            row = i // grid_cols
-            x = start_x + col * (button_w + gap)
-            y = start_y + row * (button_h + gap)
-            self.buttons.append(pygame.Rect(x, y, button_w, button_h))
+        for x, y in positions:
+            self.buttons.append(pygame.Rect(x - button_size // 2, y - button_size // 2, button_size, button_size))
 
     def draw_title(self):
-        frame = pygame.time.get_ticks() / 100
-        offset = int(5 * math.sin(frame))
-
-        font_size = max(80, self.WINDOW_HEIGHT // 7)
-        current_dir = os.path.dirname(os.path.abspath(__file__))
-        project_root = os.path.dirname(os.path.dirname(current_dir))
-        title_font_path = os.path.join(project_root, 'assets', 'fonts', 'RubikGlitch-Regular.ttf')
-        title_font = pygame.font.Font(title_font_path, font_size)
-
-        title_text = title_font.render("MENU", True, (255, 50, 50))
-        shadow_text = title_font.render("MENU", True, (0, 0, 0))
-
-        title_rect = title_text.get_rect(center=(self.WINDOW_WIDTH // 2, 70))
-        shadow_rect = shadow_text.get_rect(center=(title_rect.centerx + 4, title_rect.centery + 4))
-
+        font_size = 38
+        try:
+            # Sử dụng font chữ pixel đặc trưng của game
+            font = pygame.font.Font(self.title_font_path, font_size)
+        except:
+            font = pygame.font.SysFont('Arial', font_size - 6, bold=True)
+            
+        title_text = font.render("WORLD MAP", True, (210, 255, 255))
+        shadow_text = font.render("WORLD MAP", True, (10, 15, 25))
+        
+        # Căn giữa chữ tại vùng biển phía dưới
+        title_rect = title_text.get_rect(center=(self.WINDOW_WIDTH // 2, self.WINDOW_HEIGHT - 43))
+        shadow_rect = shadow_text.get_rect(center=(title_rect.centerx + 2, title_rect.centery + 2))
+        
+        # Vẽ banner nền mờ (Glassmorphism) ở vùng biển phía dưới
+        banner_rect = pygame.Rect(self.WINDOW_WIDTH // 2 - 110, self.WINDOW_HEIGHT - 66, 220, 46)
+        banner_surf = pygame.Surface((banner_rect.width, banner_rect.height), pygame.SRCALPHA)
+        banner_surf.fill((15, 20, 30, 200)) # Nền xanh đen mờ trong suốt
+        self.screen.blit(banner_surf, banner_rect.topleft)
+        
+        # Vẽ viền phát sáng màu xanh ngọc / Cyan mượt mà sắc nét
+        pygame.gfxdraw.rectangle(self.screen, banner_rect, (0, 220, 220))
+        # Viền chỉ tinh xảo bên trong
+        inner_rect = banner_rect.inflate(-4, -4)
+        pygame.gfxdraw.rectangle(self.screen, inner_rect, (30, 75, 110))
+        
         self.screen.blit(shadow_text, shadow_rect)
         self.screen.blit(title_text, title_rect)
 
@@ -98,35 +109,39 @@ class Menu:
             level = self.levels[i]
             is_hover = rect.collidepoint(mouse_pos)
 
+            radius = rect.width // 2
+            
+            # 1. Vẽ bóng đổ màu đen bên dưới Pin tròn (chống răng cưa)
+            pygame.gfxdraw.filled_circle(self.screen, rect.centerx + 2, rect.centery + 2, radius, (10, 10, 15))
+            pygame.gfxdraw.aacircle(self.screen, rect.centerx + 2, rect.centery + 2, radius, (10, 10, 15))
+
             if level["unlocked"]:
-                color = (80, 220, 80) if not is_hover else (120, 255, 120)
-                pygame.draw.rect(self.screen, color, rect, border_radius=10)
-                text = self.font.render(str(level["id"]), True, (0, 0, 0))
+                # Nút xanh đen mờ khi mở khóa (Vẽ mượt mà bằng gfxdraw)
+                fill_color = (25, 35, 55) if is_hover else (15, 20, 30)
+                pygame.gfxdraw.filled_circle(self.screen, rect.centerx, rect.centery, radius, fill_color)
+                pygame.gfxdraw.aacircle(self.screen, rect.centerx, rect.centery, radius, fill_color)
+
+                # Viền tròn xanh ngọc / Cyan phát sáng
+                border_color = (0, 255, 255) if is_hover else (0, 200, 200)
+                pygame.gfxdraw.aacircle(self.screen, rect.centerx, rect.centery, radius, border_color)
+                pygame.gfxdraw.aacircle(self.screen, rect.centerx, rect.centery, radius - 1, border_color)
+                
+                # Số thứ tự màn chơi
+                text = self.font.render(str(level["id"]), True, (210, 255, 255))
                 self.screen.blit(text, text.get_rect(center=rect.center))
             else:
-                pygame.draw.rect(self.screen, (180, 180, 180), rect, border_radius=10)
-                lock_scaled = pygame.transform.smoothscale(self.lock_image, (rect.width, rect.height))
-                self.screen.blit(lock_scaled, rect.topleft)
-
-        if self.buttons:
-            margin = 20
-            left = self.buttons[0].left - margin
-            top = self.buttons[0].top - margin
-            right = self.buttons[-1].right + margin
-            bottom = self.buttons[-1].bottom + margin
-            pygame.draw.rect(self.screen, (255, 255, 255), (left, top, right - left, bottom - top), width=3, border_radius=15)
-
-        pygame.draw.polygon(self.screen, (255, 255, 255), [
-            (self.arrow_left.right, self.arrow_left.top),
-            (self.arrow_left.left, self.arrow_left.centery),
-            (self.arrow_left.right, self.arrow_left.bottom)
-        ])
-
-        pygame.draw.polygon(self.screen, (255, 255, 255), [
-            (self.arrow_right.left, self.arrow_right.top),
-            (self.arrow_right.right, self.arrow_right.centery),
-            (self.arrow_right.left, self.arrow_right.bottom)
-        ])
+                # Nút xám mờ khi bị khóa
+                pygame.gfxdraw.filled_circle(self.screen, rect.centerx, rect.centery, radius, (40, 40, 50))
+                pygame.gfxdraw.aacircle(self.screen, rect.centerx, rect.centery, radius, (40, 40, 50))
+                
+                pygame.gfxdraw.aacircle(self.screen, rect.centerx, rect.centery, radius, (80, 80, 90))
+                pygame.gfxdraw.aacircle(self.screen, rect.centerx, rect.centery, radius - 1, (80, 80, 90))
+                
+                # Ổ khóa đỏ nhỏ ở giữa
+                lock_w, lock_h = 24, 24
+                lock_scaled = pygame.transform.smoothscale(self.lock_image, (lock_w, lock_h))
+                lock_rect = lock_scaled.get_rect(center=rect.center)
+                self.screen.blit(lock_scaled, lock_rect)
 
         self.draw_title()
         self.settings_button.draw()
@@ -138,25 +153,23 @@ class Menu:
                 if event.type == pygame.QUIT:
                     return "quit"
 
+                elif event.type == pygame.KEYDOWN:
+                    # Nhấn ESC để quay lại màn hình chào mừng chính
+                    if event.key == pygame.K_ESCAPE:
+                        return "background"
+
                 elif event.type == pygame.MOUSEBUTTONDOWN:
                     result = self.settings_button.handle_event(event)
                     if result == "home":
                         return "background"
 
                     if not self.settings_button.settings_menu_open:
-                        if self.arrow_left.collidepoint(event.pos):
-                            return "background"
-
-                        if self.arrow_right.collidepoint(event.pos):
-                            print("→ Tiếp trang (chưa xử lý logic)")
-
                         for i, rect in enumerate(self.buttons):
                             if rect.collidepoint(event.pos):
                                 if self.levels[i]["unlocked"]:
                                     return f"level{self.levels[i]['id']}"  # ✅ Trả về chuỗi như "level2"
                                 else:
                                     print("Màn này chưa mở!")
-
 
             self.draw()
             pygame.display.flip()
