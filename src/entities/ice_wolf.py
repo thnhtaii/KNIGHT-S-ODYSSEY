@@ -157,6 +157,7 @@ class IceWolf(pygame.sprite.Sprite):
 
             # Follow path
             if self.current_path and self.path_index < len(self.current_path):
+                self.is_moving = True
                 tx, ty = self.current_path[self.path_index]
                 target_x = tx * self.battle_base.tile_width + self.battle_base.tile_width // 2
 
@@ -168,7 +169,6 @@ class IceWolf(pygame.sprite.Sprite):
                     if margin_index < len(margin_data) and margin_data[margin_index] != 0:
                         self.direction *= -1
                         self.rect.x += self.direction * self.speed
-                        self.is_moving = True
                     else:
                         if abs(self.rect.centerx - target_x) > self.speed:
                             if self.rect.centerx < target_x:
@@ -180,7 +180,6 @@ class IceWolf(pygame.sprite.Sprite):
                                 self.flip = True
                                 self.direction = -1
                             self.check_collision('horizontal', self.speed * self.direction)
-                            self.is_moving = True
                         else:
                             self.path_index += 1
 
