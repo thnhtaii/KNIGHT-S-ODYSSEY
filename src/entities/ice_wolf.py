@@ -236,35 +236,28 @@ class IceWolf(pygame.sprite.Sprite):
         self.flip = self.direction < 0
 
     def check_collision(self, direction, move_value):
-        """Check collision with tile map."""
-        tile_width = self.battle_base.tile_width
-        tile_height = self.battle_base.tile_height
-        layer = self.battle_base.tile_layers[1]
-        map_width = self.battle_base.map_width
-        col_left = max(0, (self.rect.left - tile_width) // tile_width)
-        col_right = min(self.battle_base.map_width - 1, (self.rect.right + tile_width) // tile_width)
-        row_top = max(0, (self.rect.top - tile_height) // tile_height)
-        row_bottom = min(self.battle_base.map_height - 1, (self.rect.bottom + tile_height) // tile_height)
-        for row in range(row_top, row_bottom + 1):
-            for col in range(col_left, col_right + 1):
-                idx = row * map_width + col
-                tile = layer[idx]
-                if tile > 0:
-                    tile_rect = pygame.Rect(col * tile_width, row * tile_height, tile_width, tile_height)
-                    if self.rect.colliderect(tile_rect):
-                        if direction == 'horizontal':
-                            if move_value > 0:
-                                self.rect.right = tile_rect.left
-                            elif move_value < 0:
-                                self.rect.left = tile_rect.right
-                        elif direction == 'vertical':
-                            if move_value > 0:
-                                self.rect.bottom = tile_rect.top
-                                self.vel_y = 0
-                                self.in_air = False
-                            elif move_value < 0:
-                                self.rect.top = tile_rect.bottom
-                                self.vel_y = 0
+        """Check collision with ground and wall objects."""
+        # Vertical collision (falling down or jumping up)
+        if direction == 'vertical':
+            for obj in self.battle_base.ground_objects + self.battle_base.wall_objects:
+                rect = pygame.Rect(obj["x"], obj["y"], obj["width"], obj["height"])
+                if self.rect.colliderect(rect):
+                    if move_value > 0:  # Falling down
+                        self.rect.bottom = rect.top
+                        self.vel_y = 0
+                        self.in_air = False
+                    elif move_value < 0:  # Jumping up
+                        self.rect.top = rect.bottom
+                        self.vel_y = 0
+        # Horizontal collision (moving left or right)
+        elif direction == 'horizontal':
+            for obj in self.battle_base.wall_objects:
+                rect = pygame.Rect(obj["x"], obj["y"], obj["width"], obj["height"])
+                if self.rect.colliderect(rect):
+                    if move_value > 0:  # Moving right
+                        self.rect.right = rect.left
+                    elif move_value < 0:  # Moving left
+                        self.rect.left = rect.right
 
     def apply_gravity(self):
         """Apply gravity to the wolf."""
