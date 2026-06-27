@@ -186,14 +186,17 @@ class IceWolf(pygame.sprite.Sprite):
     def update_astar(self, player, grid, margin_data):
         """Move using A* Search algorithm."""
         self._follow_path(player, grid, margin_data, astar_path)
+        self.apply_gravity()
 
     def update_greedy(self, player, grid, margin_data):
         """Move using Greedy Best-First Search algorithm."""
         self._follow_path(player, grid, margin_data, greedy_path)
+        self.apply_gravity()
 
     def update_ida_star(self, player, grid, margin_data):
         """Move using IDA* (Iterative Deepening A*) algorithm."""
         self._follow_path(player, grid, margin_data, ida_star_path)
+        self.apply_gravity()
 
     def move(self):
         """Default movement (patrol)."""
@@ -201,20 +204,13 @@ class IceWolf(pygame.sprite.Sprite):
             return
         self.is_moving = True
         dx = self.speed * self.direction
-        dy = 0
-        self.vel_y += 0.75
-        if self.vel_y > 10:
-            self.vel_y = 10
-        dy += self.vel_y
-        temp_rect = self.rect.move(dx, dy)
+        temp_rect = self.rect.move(dx, 0)
         if self.move_area and not self.move_area.contains(temp_rect):
             if temp_rect.left < self.move_area.left or temp_rect.right > self.move_area.right:
                 self.direction *= -1
                 dx = self.speed * self.direction
         self.rect.x += dx
         self.check_collision('horizontal', dx)
-        self.rect.y += dy
-        self.check_collision('vertical', dy)
         if self.move_area:
             if self.rect.left < self.move_area.left:
                 self.rect.left = self.move_area.left
@@ -224,16 +220,12 @@ class IceWolf(pygame.sprite.Sprite):
                 self.rect.right = self.move_area.right
                 self.direction *= -1
                 self.flip = not self.flip
-        if self.rect.top < 0:
-            self.rect.top = 0
-            self.vel_y = 0
-        if self.rect.bottom > 600:
-            self.rect.bottom = 600
-            self.vel_y = 0
-            self.in_air = False
 
         # Set flip based on direction
         self.flip = self.direction < 0
+
+        # Áp dụng trọng lực động để giữ ổn định Y
+        self.apply_gravity()
 
     def check_collision(self, direction, move_value):
         """Check collision with ground and wall objects."""
@@ -263,12 +255,27 @@ class IceWolf(pygame.sprite.Sprite):
         """Apply gravity to the wolf."""
         if not self.alive:
             return
-        self.in_air = True
-        self.vel_y += 0.75
-        if self.vel_y > 10:
-            self.vel_y = 10
-        self.rect.y += self.vel_y
-        self.check_collision('vertical', self.vel_y)
+        
+        # Kiểm tra xem có nền ngay dưới chân không (dung sai 1 pixel)
+        temp_rect = self.rect.move(0, 1)
+        on_ground = False
+        for obj in self.battle_base.ground_objects + self.battle_base.wall_objects:
+            rect = pygame.Rect(obj["x"], obj["y"], obj["width"], obj["height"])
+            if temp_rect.colliderect(rect):
+                on_ground = True
+                break
+        
+        if on_ground:
+            self.in_air = False
+            self.vel_y = 0
+        else:
+            self.in_air = True
+            self.vel_y += 0.75
+            if self.vel_y > 10:
+                self.vel_y = 10
+            self.rect.y += self.vel_y
+            self.check_collision('vertical', self.vel_y)
+            
         if self.rect.bottom > 600:
             self.rect.bottom = 600
             self.vel_y = 0
@@ -304,7 +311,6 @@ class IceWolf(pygame.sprite.Sprite):
     def update_animation(self):
         """Update the current animation frame."""
         cooldown = 100
-        self.apply_gravity()
 
         self.image = self.animation_list[self.action][self.frame_index]
 
