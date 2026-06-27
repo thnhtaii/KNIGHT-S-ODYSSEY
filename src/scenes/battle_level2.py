@@ -268,6 +268,7 @@ class BattleLevel2(BattleBase):
                 # Cập nhật Ice Wolf
                 for wolf in self.wolf_list[:]:  # Sao chép danh sách để tránh lỗi khi xóa
                     if wolf.alive:
+                        # 1) Run pathfinding / movement
                         if wolf.name == "wolf_astar":
                             wolf.update_astar(self.player, self.grid, self.margin_data)
                         elif wolf.name == "wolf_greedy":
@@ -276,21 +277,22 @@ class BattleLevel2(BattleBase):
                             wolf.update_ida_star(self.player, self.grid, self.margin_data)
                         else:
                             wolf.move()
+
+                        # 2) Attack check
                         wolf.try_attack_player(self.player)
 
-                        if wolf.in_air:
-                            wolf.update_action(1)
-                        else:
-                            wolf.update_action(0)
+                        # 3) Decide animation based on current state (centralized)
+                        wolf.decide_animation()
                     else:
                         if wolf.action != 3:
                             wolf.update_action(3)  # Đảm bảo chuyển sang Die
-                        wolf.update_animation()
-                        if wolf.frame_index >= len(wolf.animation_list[3]) - 1:  # Đã hoàn thành animation Die
+                        if wolf.death_animation_complete:
                             self.wolf_list.remove(wolf)
                             self.enemy_group.remove(wolf)
                             print(f"[IceWolf] {wolf.name} đã được xóa!")
+                            continue
 
+                    # 4) Update animation exactly once per frame
                     wolf.update_animation()
 
             if not self.player.alive:

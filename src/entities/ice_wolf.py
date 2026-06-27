@@ -9,6 +9,15 @@ class IceWolf(pygame.sprite.Sprite):
     """Ice Wolf enemy entity for Level 2.
     Uses informed search algorithms: A*, Greedy Best-First Search, IDA*.
     Loads sprite frames from assets/sprites/ice_wolf/ directory.
+
+    Animation actions:
+        0 = Idle
+        1 = Run
+        2 = Hurt
+        3 = Die
+        4 = Attack
+        5 = Walk
+        6 = Jump
     """
 
     def __init__(self, x, y, scale, speed, battle_base, move_area=None):
@@ -28,6 +37,10 @@ class IceWolf(pygame.sprite.Sprite):
         self.battle_base = battle_base
         self.move_area = move_area
         self.name = "wolf_normal"
+        self.scale = scale
+
+        # Movement tracking — used to decide which animation to play
+        self.is_moving = False
 
         # Pathfinding state
         self.current_path = []
@@ -79,7 +92,6 @@ class IceWolf(pygame.sprite.Sprite):
         self.rect = pygame.Rect(0, 0, rect_w, rect_h)
         self.rect.bottomleft = (x, y)
 
-
     def _is_target_changed(self, new_goal_tile):
         """Check if the pathfinding goal has changed significantly."""
         if self.last_goal_tile is None:
@@ -100,6 +112,9 @@ class IceWolf(pygame.sprite.Sprite):
                 player.last_hurt_time = current_time
                 print(f"[{self.name}] Ice Wolf tấn công! Knight còn {player.health} máu")
                 self.last_attack_time = current_time
+                # Play attack animation on the wolf
+                self.update_action(4)  # Attack animation
+                self.is_attacking = True
                 if player.health <= 0:
                     player.check_alive()
 
@@ -107,6 +122,9 @@ class IceWolf(pygame.sprite.Sprite):
         """Generic path following logic used by all search algorithms."""
         if not self.alive:
             return
+
+        # Reset movement flag — will be set to True if wolf actually moves
+        self.is_moving = False
 
         # Check distance to player
         if abs(self.rect.centerx - player.rect.centerx) < 200:
@@ -150,6 +168,7 @@ class IceWolf(pygame.sprite.Sprite):
                     if margin_index < len(margin_data) and margin_data[margin_index] != 0:
                         self.direction *= -1
                         self.rect.x += self.direction * self.speed
+                        self.is_moving = True
                     else:
                         if abs(self.rect.centerx - target_x) > self.speed:
                             if self.rect.centerx < target_x:
@@ -161,11 +180,9 @@ class IceWolf(pygame.sprite.Sprite):
                                 self.flip = True
                                 self.direction = -1
                             self.check_collision('horizontal', self.speed * self.direction)
+                            self.is_moving = True
                         else:
                             self.path_index += 1
-
-                # Use Run animation (action 1) when moving
-                self.update_action(1 if self.in_air or abs(self.rect.centerx - target_x) > self.speed else 0)
 
     def update_astar(self, player, grid, margin_data):
         """Move using A* Search algorithm."""
@@ -183,6 +200,7 @@ class IceWolf(pygame.sprite.Sprite):
         """Default movement (patrol)."""
         if not self.alive:
             return
+        self.is_moving = True
         dx = self.speed * self.direction
         dy = 0
         self.vel_y += 0.75
@@ -214,6 +232,9 @@ class IceWolf(pygame.sprite.Sprite):
             self.rect.bottom = 600
             self.vel_y = 0
             self.in_air = False
+
+        # Set flip based on direction
+        self.flip = self.direction < 0
 
     def check_collision(self, direction, move_value):
         """Check collision with tile map."""
@@ -260,6 +281,33 @@ class IceWolf(pygame.sprite.Sprite):
             self.vel_y = 0
             self.in_air = False
 
+    def decide_animation(self):
+        """Decide which animation to play based on current state.
+        Called once per frame AFTER movement logic, BEFORE update_animation().
+        This prevents jitter by centralizing animation decisions.
+        """
+        if not self.alive:
+            self.update_action(3)  # Die
+            return
+
+        # If currently playing attack animation, let it finish
+        if self.is_attacking:
+            if self.action == 4 and self.frame_index < len(self.animation_list[4]) - 1:
+                return  # Don't interrupt attack animation
+            else:
+                self.is_attacking = False
+
+        # Choose animation based on state
+        if self.in_air:
+            self.update_action(6)  # Jump
+        elif self.is_moving:
+            self.update_action(1)  # Run (chasing player)
+        else:
+            if self.follow_player:
+                self.update_action(0)  # Idle (near player but not moving)
+            else:
+                self.update_action(5)  # Walk (patrolling)
+
     def update_animation(self):
         """Update the current animation frame."""
         cooldown = 100
@@ -274,6 +322,9 @@ class IceWolf(pygame.sprite.Sprite):
                 if self.action == 3:  # Die
                     self.frame_index = len(self.animation_list[3]) - 1
                     self.death_animation_complete = True
+                elif self.action == 4:  # Attack finished
+                    self.is_attacking = False
+                    self.frame_index = 0
                 else:
                     self.frame_index = 0
 
@@ -299,4 +350,3 @@ class IceWolf(pygame.sprite.Sprite):
             draw_x = self.rect.centerx - self.image.get_width() // 2
             draw_y = self.rect.bottom - self.image.get_height()
             screen.blit(pygame.transform.flip(self.image, self.flip, False), (draw_x, draw_y))
-
