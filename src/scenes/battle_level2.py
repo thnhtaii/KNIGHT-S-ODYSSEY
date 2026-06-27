@@ -79,12 +79,22 @@ class BattleLevel2(BattleBase):
                 self.player.flip = True
                 self.player.direction = -1
                 self.player_group = pygame.sprite.Group(self.player)
-            if props.get("enemy") == "yes":
-                move_area = pygame.Rect(x - 150, y - 80, 300, 160)
-                wolf = IceWolf(x, y, 0.5, 2, self, move_area=move_area)
-                wolf.name = wolf_algo_names[wolf_count % len(wolf_algo_names)]
-                wolf_count += 1
-                self.wolf_list.append(wolf)
+
+        # Spawn exactly 4 wolves on different platforms
+        platforms = [
+            {"x": 585, "y": 280, "w": 170},  # Platform 3 (Top Right)
+            {"x": 215, "y": 326, "w": 130},  # Platform 4 (Middle Left)
+            {"x": 380, "y": 385, "w": 185},  # Platform 5 (Middle Center)
+            {"x": 583, "y": 444, "w": 150},  # Platform 6 (Lower Right)
+        ]
+
+        for p in platforms:
+            platform_left = p["x"] - p["w"] // 2
+            move_area = pygame.Rect(platform_left, p["y"] - 80, p["w"], 160)
+            wolf = IceWolf(p["x"], p["y"], 0.5, 2, self, move_area=move_area)
+            wolf.name = wolf_algo_names[wolf_count % len(wolf_algo_names)]
+            wolf_count += 1
+            self.wolf_list.append(wolf)
 
 
         if not self.player:
