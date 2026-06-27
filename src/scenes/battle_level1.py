@@ -13,8 +13,7 @@ class BattleLevel1(BattleBase):
     def __init__(self, screen, health_bar, player_health):
         super().__init__(screen, level_name="level1")
         self.screen = screen
-        from src.ui.custom_health_bar import CustomHealthBar
-        self.health_bar = CustomHealthBar(20, 20, 150, 40, player_health)
+        self.health_bar = health_bar
         self.player_health = player_health
         self.running = True
         self.paused = False
