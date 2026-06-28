@@ -59,7 +59,16 @@ class BattleLevel1(BattleBase):
                 slime_dir = os.path.join(project_root, 'assets', 'sprites', 'slime')
                 custom_img_name = "custom_slime1.png" if len(self.slime_list) % 2 == 0 else "custom_slime2.png"
                 custom_img_path = os.path.join(slime_dir, custom_img_name)
-                slime = Slime(x, y, 1.0, 2, self, move_area=move_area, custom_img_path=custom_img_path)
+                
+                # Biến đổi màu nước văng/hiệu ứng bị chém từ xanh dương sang xanh lục nhạt
+                color_swap = {
+                    (20, 52, 100): (20, 70, 40),      # Outline xanh dương -> Outline xanh lục đậm
+                    (40, 92, 196): (60, 180, 100),    # Thân xanh dương -> Thân xanh lục
+                    (36, 159, 222): (120, 230, 150),  # Highlight xanh dương -> Highlight xanh lục nhạt
+                    (32, 214, 199): (166, 252, 219)   # Chi tiết cyan -> Chi tiết xanh lục nhạt/bạc hà
+                }
+                
+                slime = Slime(x, y, 1.0, 2, self, move_area=move_area, custom_img_path=custom_img_path, color_swap=color_swap)
                 slime.name = current_slime_name
                 self.slime_list.append(slime)
 

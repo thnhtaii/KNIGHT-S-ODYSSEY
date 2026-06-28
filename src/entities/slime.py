@@ -5,7 +5,7 @@ from src.ai.algorithms import bfs_path, dfs_path, ucs_path, greedy_path, hill_cl
 import random
 
 class Slime(pygame.sprite.Sprite):
-    def __init__(self, x, y, scale, speed, battle_base, move_area=None, custom_img_path=None):
+    def __init__(self, x, y, scale, speed, battle_base, move_area=None, custom_img_path=None, color_swap=None):
         pygame.sprite.Sprite.__init__(self)
         self.alive = True
         self.speed = speed
@@ -69,6 +69,11 @@ class Slime(pygame.sprite.Sprite):
                     img_path = os.path.join(sprite_path, f"Jump_Land_{i}.png")
                 if os.path.exists(img_path):
                     img = pygame.image.load(img_path).convert_alpha()
+                    if color_swap:
+                        pixel_array = pygame.PixelArray(img)
+                        for old_c, new_c in color_swap.items():
+                            pixel_array.replace(old_c, new_c)
+                        del pixel_array
                     img = pygame.transform.scale(img, (int(img.get_width() * scale), int(img.get_height() * scale)))
                     temp_list.append(img)
             self.animation_list.append(temp_list if temp_list else [pygame.Surface((32, 32))])
