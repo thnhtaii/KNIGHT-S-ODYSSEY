@@ -8,6 +8,8 @@ from src.ui.game_over import GameOverScreen
 from src.components.level_manager import LevelLogicManager
 from src.ui.game_victory import GameVictoryScreen
 import os
+import random
+import math
 
 class BattleLevel2(BattleBase):
     def __init__(self, screen, health_bar, player_health):
@@ -32,15 +34,20 @@ class BattleLevel2(BattleBase):
         # Khởi tạo các đối tượng từ object layer
         bg_dir = os.path.join(project_root, 'assets', 'backgrounds')
         
-        # Load and scale level 2 scene pieces.
+        # Load and cache optimized background image once
+        bg_path = os.path.join(bg_dir, "level2_improved.png")
+        self.bg_image = pygame.image.load(bg_path).convert()
+        self.bg_image = pygame.transform.smoothscale(self.bg_image, (800, 608))
+
+        # Load and smoothscale level 2 scene pieces preserving aspect ratios
         self.BGDoor = pygame.image.load(os.path.join(bg_dir, "BGDoor_level2.png")).convert_alpha()
-        self.BGDoor = pygame.transform.scale(self.BGDoor, (260, 650))
+        self.BGDoor = pygame.transform.smoothscale(self.BGDoor, (380, 650))
 
         # Load custom platform, ground, and wall images
         self.custom_platform_img = pygame.image.load(os.path.join(bg_dir, "custom_platform_level2.png")).convert_alpha()
         self.custom_ground_img = pygame.image.load(os.path.join(bg_dir, "custom_ground_level2.png")).convert_alpha()
         self.custom_wall_img = pygame.image.load(os.path.join(bg_dir, "custom_wall_level2.png")).convert_alpha()
-        self.left_wall_img = pygame.transform.scale(self.custom_wall_img, (260, 650))
+        self.left_wall_img = pygame.transform.smoothscale(self.custom_wall_img, (340, 650))
 
         self.cached_platforms = []
         for obj in self.ground_objects:
@@ -52,15 +59,28 @@ class BattleLevel2(BattleBase):
                 if x == 0:
                     continue  # Khong ve de vi vach da nen da co san hinh anh buc
                 else:
-                    img = pygame.transform.scale(self.custom_platform_img, (w, h))
+                    img = pygame.transform.smoothscale(self.custom_platform_img, (w, h))
             else:
                 if x < 32:
                     w += x
                     x = 0
                 if x + w > 768:
                     w = 800 - x
-                img = pygame.transform.scale(self.custom_ground_img, (w, h))
+                img = pygame.transform.smoothscale(self.custom_ground_img, (w, h))
             self.cached_platforms.append((img, x, y))
+
+        # Khởi tạo particle systems
+        self.snow_particles = []
+        for _ in range(80):
+            self.snow_particles.append({
+                'x': random.uniform(0, 800),
+                'y': random.uniform(-10, 608),
+                'speed_y': random.uniform(1.0, 2.5),
+                'speed_x': random.uniform(-0.5, 0.5),
+                'size': random.randint(2, 4),
+                'opacity': random.randint(100, 220)
+            })
+        self.portal_particles = []
 
         # Tên thuật toán cho từng Ice Wolf
         wolf_algo_names = ["wolf_astar", "wolf_greedy", "wolf_ida_star"]
@@ -338,19 +358,76 @@ class BattleLevel2(BattleBase):
             print(f"FPS: {clock.get_fps()}")
 
     def draw(self):
-        super().draw(self.camera_offset)
+        # 1) Draw cached smoothscaled background
+        self.screen.blit(self.bg_image, (-self.camera_offset[0], -self.camera_offset[1]))
 
-        # Large scenic pieces for level 2 only. These are visual backdrops; wall
-        # collision still comes from the object layer in level2.tmx.
-        self.screen.blit(self.left_wall_img, (-22 - self.camera_offset[0], -30 - self.camera_offset[1]))
-        self.screen.blit(self.BGDoor, (580 - self.camera_offset[0], -30 - self.camera_offset[1]))
+        # 2) Draw tile layers (excluding ground/platform layers as in base class)
+        for layer_idx, layer in enumerate(self.tile_layers):
+            if layer_idx < len(self.tile_layers_visibility) and not self.tile_layers_visibility[layer_idx]:
+                continue
+            if layer_idx < len(self.tile_layers_names) and self.tile_layers_names[layer_idx] in ["ground", "platform"]:
+                continue
+            for idx, tile in enumerate(layer):
+                tile = int(tile)
+                if tile > 0:
+                    col_idx = idx % self.map_width
+                    row_idx = idx // self.map_width
+                    img = self.tiles.get(tile)
+                    if img:
+                        self.screen.blit(
+                            img,
+                            (
+                                col_idx * self.tile_width - self.camera_offset[0],
+                                row_idx * self.tile_height - self.camera_offset[1]
+                            )
+                        )
 
-        # Draw the custom platform, ground and wall images from cache
+        # 3) Draw left wall and right portal door (with natural aspect ratio and smooth scaling)
+        self.screen.blit(self.left_wall_img, (-60 - self.camera_offset[0], -30 - self.camera_offset[1]))
+        self.screen.blit(self.BGDoor, (520 - self.camera_offset[0], -30 - self.camera_offset[1]))
+
+        # 4) Draw the custom platform, ground and wall images from cache
         for img, x, y in self.cached_platforms:
             draw_x = x - self.camera_offset[0]
             draw_y = y - self.camera_offset[1]
             self.screen.blit(img, (draw_x, draw_y))
 
+        # 5) Draw portal vortex glowing particles
+        vortex_x = 520 + 240 - self.camera_offset[0]
+        vortex_y = -30 + 150 - self.camera_offset[1]
+        
+        # Update and draw portal particles
+        if len(self.portal_particles) < 25:
+            angle = random.uniform(0, math.pi * 2)
+            dist = random.uniform(5, 45)
+            self.portal_particles.append({
+                'x': vortex_x + math.cos(angle) * dist,
+                'y': vortex_y + math.sin(angle) * dist,
+                'vx': -math.cos(angle) * random.uniform(0.2, 0.8) - math.sin(angle) * random.uniform(0.1, 0.4),
+                'vy': -math.sin(angle) * random.uniform(0.2, 0.8) + math.cos(angle) * random.uniform(0.1, 0.4),
+                'life': 1.0,
+                'decay': random.uniform(0.015, 0.03),
+                'size': random.randint(2, 4),
+                'color': random.choice([
+                    (0, 240, 255),    # cyan
+                    (100, 255, 255),  # light cyan
+                    (0, 150, 255)     # blue
+                ])
+            })
+            
+        for p in self.portal_particles[:]:
+            p['x'] += p['vx']
+            p['y'] += p['vy']
+            p['life'] -= p['decay']
+            if p['life'] <= 0:
+                self.portal_particles.remove(p)
+            else:
+                alpha = int(p['life'] * 255)
+                sparkle_surf = pygame.Surface((p['size']*2, p['size']*2), pygame.SRCALPHA)
+                pygame.draw.circle(sparkle_surf, p['color'] + (alpha,), (p['size'], p['size']), p['size'])
+                self.screen.blit(sparkle_surf, (p['x'] - p['size'], p['y'] - p['size']))
+
+        # 6) Draw sprites
         for sprite in self.player_group:
             flipped_image = pygame.transform.flip(sprite.image, sprite.flip, False)
             self.screen.blit(flipped_image, (sprite.rect.x - self.camera_offset[0], sprite.rect.y - self.camera_offset[1]))
@@ -362,13 +439,31 @@ class BattleLevel2(BattleBase):
                 flipped = pygame.transform.flip(sprite.image, sprite.flip, False)
                 self.screen.blit(flipped, (draw_x, draw_y))
                 if sprite.alive:
-                    font = pygame.font.SysFont("Arial", 12, bold=True)
+                    # Styled Cyberpunk HUD label capsule
+                    font = pygame.font.SysFont("Consolas", 11, bold=True)
                     algo_name = sprite.name.replace("wolf_", "").upper()
-                    text_surface = font.render(algo_name, True, (100, 200, 255))
-                    text_rect = text_surface.get_rect(center=(sprite.rect.centerx - self.camera_offset[0], sprite.rect.top - 10 - self.camera_offset[1]))
+                    text_surface = font.render(algo_name, True, (0, 255, 255))
+                    text_rect = text_surface.get_rect(center=(sprite.rect.centerx - self.camera_offset[0], sprite.rect.top - 15 - self.camera_offset[1]))
+                    
+                    bg_rect = pygame.Rect(text_rect.x - 6, text_rect.y - 3, text_rect.width + 12, text_rect.height + 6)
+                    bg_surf = pygame.Surface((bg_rect.width, bg_rect.height), pygame.SRCALPHA)
+                    bg_surf.fill((10, 20, 30, 200))
+                    pygame.draw.rect(bg_surf, (0, 200, 255), (0, 0, bg_rect.width, bg_rect.height), 1, border_radius=4)
+                    self.screen.blit(bg_surf, bg_rect)
                     self.screen.blit(text_surface, text_rect)
 
+        # 7) Draw falling snow particles
+        for p in self.snow_particles:
+            p['y'] += p['speed_y']
+            p['x'] += p['speed_x']
+            if p['y'] > 608:
+                p['y'] = -10
+                p['x'] = random.uniform(0, 800)
+            snow_surf = pygame.Surface((p['size']*2, p['size']*2), pygame.SRCALPHA)
+            pygame.draw.circle(snow_surf, (255, 255, 255, p['opacity']), (p['size'], p['size']), p['size'])
+            self.screen.blit(snow_surf, (p['x'] - p['size'], p['y'] - p['size']))
 
+        # 8) Draw UI HUD
         self.health_bar.draw(self.screen)
 
         self.screen.blit(self.settings_icon, (self.settings_button.x, self.settings_button.y))

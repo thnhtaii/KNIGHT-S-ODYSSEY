@@ -73,7 +73,7 @@ class IceWolf(pygame.sprite.Sprite):
                 for f in files:
                     img_path = os.path.join(anim_dir, f)
                     img = pygame.image.load(img_path).convert_alpha()
-                    img = pygame.transform.scale(img, (
+                    img = pygame.transform.smoothscale(img, (
                         int(img.get_width() * scale),
                         int(img.get_height() * scale)
                     ))

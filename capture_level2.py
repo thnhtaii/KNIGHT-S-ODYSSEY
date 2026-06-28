@@ -2,6 +2,11 @@ import pygame
 import sys
 import os
 
+# Reconfigure stdout/stderr to support UTF-8 characters on Windows console
+if sys.platform.startswith('win'):
+    sys.stdout.reconfigure(encoding='utf-8')
+    sys.stderr.reconfigure(encoding='utf-8')
+
 # Set paths
 project_root = r"d:\ky 2 nam 2\AI_cuoiky\Stickyman-Battle"
 sys.path.insert(0, project_root)
@@ -41,7 +46,7 @@ def main():
         clock.tick(60)
 
     # Save screenshot
-    screenshot_path = r"C:\Users\dotai\.gemini\antigravity\brain\9f8dbed2-40a8-48e6-b01f-4daa6cbbf7df\level2_capture.png"
+    screenshot_path = r"C:\Users\dotai\.gemini\antigravity\brain\a74fb285-d9da-409e-8f66-2fb22defbc0c\level2_capture.png"
     pygame.image.save(screen, screenshot_path)
     print("Screenshot saved successfully to", screenshot_path)
     pygame.quit()
