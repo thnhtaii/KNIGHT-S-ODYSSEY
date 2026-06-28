@@ -140,8 +140,8 @@ class AdversarialSearch:
 
     @staticmethod
     def is_in_range(pos1, pos2):
-        # Combat range (Chebyshev distance <= 2 grid cells)
-        return max(abs(pos1[0] - pos2[0]), abs(pos1[1] - pos2[1])) <= 2
+        # Combat range: X distance <= 2, Y distance <= 1
+        return abs(pos1[0] - pos2[0]) <= 2 and abs(pos1[1] - pos2[1]) <= 1
 
     @staticmethod
     def simulate_state(boss_pos, player_pos, boss_hp, player_hp, boss_act, player_act, grid, boss_dir=-1):
