@@ -19,6 +19,8 @@ class BattleLevel2(BattleBase):
         self.player_health = player_health
         self.running = True
         self.paused = False
+        self.door_x = 480
+        self.door_y = -30
         self.door_pos = None
         self.player = None
         self.wolf_list = []
@@ -92,7 +94,7 @@ class BattleLevel2(BattleBase):
             props = obj["properties"]
             
             if props.get("win") == "yes":
-                self.door_pos = (580 + 129, -30 + 324)
+                self.door_pos = (self.door_x + 129, self.door_y + 324)
 
             if props.get("player") == "yes":
                 self.player = Knight(x, y, scale=0.35, speed=3, battle_base=self)
@@ -385,7 +387,7 @@ class BattleLevel2(BattleBase):
 
         # 3) Draw left wall and right portal door (with natural aspect ratio and smooth scaling)
         self.screen.blit(self.left_wall_img, (-60 - self.camera_offset[0], -30 - self.camera_offset[1]))
-        self.screen.blit(self.BGDoor, (520 - self.camera_offset[0], -30 - self.camera_offset[1]))
+        self.screen.blit(self.BGDoor, (self.door_x - self.camera_offset[0], self.door_y - self.camera_offset[1]))
 
         # 4) Draw the custom platform, ground and wall images from cache
         for img, x, y in self.cached_platforms:
@@ -394,8 +396,8 @@ class BattleLevel2(BattleBase):
             self.screen.blit(img, (draw_x, draw_y))
 
         # 5) Draw portal vortex glowing particles
-        vortex_x = 520 + 240 - self.camera_offset[0]
-        vortex_y = -30 + 150 - self.camera_offset[1]
+        vortex_x = self.door_x + 240 - self.camera_offset[0]
+        vortex_y = self.door_y + 150 - self.camera_offset[1]
         
         # Update and draw portal particles
         if len(self.portal_particles) < 25:
