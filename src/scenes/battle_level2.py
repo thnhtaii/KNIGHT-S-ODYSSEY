@@ -94,7 +94,8 @@ class BattleLevel2(BattleBase):
             props = obj["properties"]
             
             if props.get("win") == "yes":
-                self.door_pos = (self.door_x + 129, self.door_y + 324)
+                # Align door_pos to the center of the portal vortex: (door_x + 240, door_y + 150)
+                self.door_pos = (self.door_x + 240, self.door_y + 150)
 
             if props.get("player") == "yes":
                 self.player = Knight(x, y, scale=0.35, speed=3, battle_base=self)
@@ -162,9 +163,10 @@ class BattleLevel2(BattleBase):
             self.logic_manager.update()
 
             if self.door_pos:
-                door_rect = pygame.Rect(self.door_pos[0], self.door_pos[1] - 64, 64, 64)
-                player_rect = self.player.rect.move(-self.camera_offset[0], -self.camera_offset[1])
-                if self.logic_manager.check_victory(player_rect, door_rect):
+                # Create a victory collision rect centered at the portal vortex
+                door_rect = pygame.Rect(self.door_pos[0] - 50, self.door_pos[1] - 50, 100, 100)
+                # Check collision using player's world coordinates (self.player.rect)
+                if self.logic_manager.check_victory(self.player.rect, door_rect):
                     victory_screen = GameVictoryScreen(self.screen)
                     result = victory_screen.run()
                     if result == "menu":
