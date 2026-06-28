@@ -334,7 +334,7 @@ class BattleLevel2(BattleBase):
 
             self.draw()
             pygame.display.flip()
-            clock.tick(60) / 1000.0
+            clock.tick(60)
             print(f"FPS: {clock.get_fps()}")
 
     def draw(self):
