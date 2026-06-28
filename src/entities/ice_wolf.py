@@ -153,11 +153,14 @@ class IceWolf(pygame.sprite.Sprite):
             if (not self.current_path or
                     self.path_index >= len(self.current_path) or
                     self._is_target_changed(goal_tile)):
+                import time
+                start_t = time.perf_counter()
                 self.current_path = pathfind_func(current_tile, goal_tile, grid)
+                duration_ms = (time.perf_counter() - start_t) * 1000
                 self.path_index = 0
                 self.last_goal_tile = goal_tile
                 from src.components.ai_stats_tracker import AIStatsTracker
-                AIStatsTracker.log_pathfinding(self.name)
+                AIStatsTracker.log_pathfinding(self.name, path_len=len(self.current_path), time_ms=duration_ms)
 
             # Follow path
             if self.current_path and self.path_index < len(self.current_path):

@@ -139,11 +139,14 @@ class Slime(pygame.sprite.Sprite):
                 return
 
             if not self.bfs_path or self.path_index >= len(self.bfs_path) or self._is_target_changed(goal_tile):
+                import time
+                start_t = time.perf_counter()
                 self.bfs_path = bfs_path(current_tile, goal_tile, grid)
+                duration_ms = (time.perf_counter() - start_t) * 1000
                 self.path_index = 0
                 self.last_goal_tile = goal_tile
                 from src.components.ai_stats_tracker import AIStatsTracker
-                AIStatsTracker.log_pathfinding(self.name)
+                AIStatsTracker.log_pathfinding(self.name, path_len=len(self.bfs_path), time_ms=duration_ms)
 
             if self.bfs_path and self.path_index < len(self.bfs_path):
                 tx, ty = self.bfs_path[self.path_index]
@@ -197,11 +200,14 @@ class Slime(pygame.sprite.Sprite):
                 return
 
             if not self.bfs_path or self.path_index >= len(self.bfs_path) or self._is_target_changed(goal_tile):
+                import time
+                start_t = time.perf_counter()
                 self.bfs_path = dfs_path(current_tile, goal_tile, grid)
+                duration_ms = (time.perf_counter() - start_t) * 1000
                 self.path_index = 0
                 self.last_goal_tile = goal_tile
                 from src.components.ai_stats_tracker import AIStatsTracker
-                AIStatsTracker.log_pathfinding(self.name)
+                AIStatsTracker.log_pathfinding(self.name, path_len=len(self.bfs_path), time_ms=duration_ms)
 
             if self.bfs_path and self.path_index < len(self.bfs_path):
                 tx, ty = self.bfs_path[self.path_index]
@@ -254,11 +260,14 @@ class Slime(pygame.sprite.Sprite):
                 return
 
             if not self.bfs_path or self.path_index >= len(self.bfs_path) or self._is_target_changed(goal_tile):
+                import time
+                start_t = time.perf_counter()
                 self.bfs_path = ucs_path(current_tile, goal_tile, grid)
+                duration_ms = (time.perf_counter() - start_t) * 1000
                 self.path_index = 0
                 self.last_goal_tile = goal_tile
                 from src.components.ai_stats_tracker import AIStatsTracker
-                AIStatsTracker.log_pathfinding(self.name)
+                AIStatsTracker.log_pathfinding(self.name, path_len=len(self.bfs_path), time_ms=duration_ms)
 
             if self.bfs_path and self.path_index < len(self.bfs_path):
                 tx, ty = self.bfs_path[self.path_index]
