@@ -21,6 +21,8 @@ class BattleLevel1(BattleBase):
         self.player = None
         self.slime_list = []
         self.logic_manager = LevelLogicManager(self.slime_list)
+        from src.components.ai_stats_tracker import AIStatsTracker
+        AIStatsTracker.reset("Level 1")
 
         current_dir = os.path.dirname(os.path.abspath(__file__))
         project_root = os.path.dirname(os.path.dirname(current_dir))
@@ -141,6 +143,11 @@ class BattleLevel1(BattleBase):
                 door_rect = pygame.Rect(self.door_pos[0], self.door_pos[1] - 64, 64, 64)
                 player_rect = self.player.rect.move(-self.camera_offset[0], -self.camera_offset[1])
                 if self.logic_manager.check_victory(player_rect, door_rect):
+                    from src.ui.ai_dashboard import AIDashboard
+                    from src.components.ai_stats_tracker import AIStatsTracker
+                    dashboard = AIDashboard(self.screen, AIStatsTracker.get_stats(), "Level 1")
+                    dashboard.run()
+
                     victory_screen = GameVictoryScreen(self.screen)
                     result = victory_screen.run()
                     if result == "menu":
@@ -320,6 +327,12 @@ class BattleLevel1(BattleBase):
             if not self.player.alive:
                 self.player_health = 0
                 self.health_bar.set_health(self.player_health)
+                
+                from src.ui.ai_dashboard import AIDashboard
+                from src.components.ai_stats_tracker import AIStatsTracker
+                dashboard = AIDashboard(self.screen, AIStatsTracker.get_stats(), "Level 1")
+                dashboard.run()
+
                 game_over_screen = GameOverScreen(self.screen)
                 result = game_over_screen.run()
                 if result == "restart":

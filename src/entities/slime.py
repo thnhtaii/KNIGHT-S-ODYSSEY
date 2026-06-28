@@ -106,6 +106,8 @@ class Slime(pygame.sprite.Sprite):
                 print(f"[{self.name}] Slime tấn công! Knight còn {player.health} máu")
 
                 self.last_attack_time = current_time
+                from src.components.ai_stats_tracker import AIStatsTracker
+                AIStatsTracker.log_attack(self.name, 10)
 
                 if player.health <= 0:
                     player.check_alive()
@@ -140,6 +142,8 @@ class Slime(pygame.sprite.Sprite):
                 self.bfs_path = bfs_path(current_tile, goal_tile, grid)
                 self.path_index = 0
                 self.last_goal_tile = goal_tile
+                from src.components.ai_stats_tracker import AIStatsTracker
+                AIStatsTracker.log_pathfinding(self.name)
 
             if self.bfs_path and self.path_index < len(self.bfs_path):
                 tx, ty = self.bfs_path[self.path_index]
@@ -196,6 +200,8 @@ class Slime(pygame.sprite.Sprite):
                 self.bfs_path = dfs_path(current_tile, goal_tile, grid)
                 self.path_index = 0
                 self.last_goal_tile = goal_tile
+                from src.components.ai_stats_tracker import AIStatsTracker
+                AIStatsTracker.log_pathfinding(self.name)
 
             if self.bfs_path and self.path_index < len(self.bfs_path):
                 tx, ty = self.bfs_path[self.path_index]
@@ -251,6 +257,8 @@ class Slime(pygame.sprite.Sprite):
                 self.bfs_path = ucs_path(current_tile, goal_tile, grid)
                 self.path_index = 0
                 self.last_goal_tile = goal_tile
+                from src.components.ai_stats_tracker import AIStatsTracker
+                AIStatsTracker.log_pathfinding(self.name)
 
             if self.bfs_path and self.path_index < len(self.bfs_path):
                 tx, ty = self.bfs_path[self.path_index]

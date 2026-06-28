@@ -25,6 +25,8 @@ class BattleLevel2(BattleBase):
         self.player = None
         self.wolf_list = []
         self.logic_manager = LevelLogicManager(self.wolf_list)
+        from src.components.ai_stats_tracker import AIStatsTracker
+        AIStatsTracker.reset("Level 2")
 
         current_dir = os.path.dirname(os.path.abspath(__file__))
         project_root = os.path.dirname(os.path.dirname(current_dir))
@@ -167,6 +169,11 @@ class BattleLevel2(BattleBase):
                 door_rect = pygame.Rect(self.door_pos[0] - 50, self.door_pos[1] - 50, 100, 100)
                 # Check collision using player's world coordinates (self.player.rect)
                 if self.logic_manager.check_victory(self.player.rect, door_rect):
+                    from src.ui.ai_dashboard import AIDashboard
+                    from src.components.ai_stats_tracker import AIStatsTracker
+                    dashboard = AIDashboard(self.screen, AIStatsTracker.get_stats(), "Level 2")
+                    dashboard.run()
+
                     victory_screen = GameVictoryScreen(self.screen)
                     result = victory_screen.run()
                     if result == "menu":
@@ -344,6 +351,12 @@ class BattleLevel2(BattleBase):
             if not self.player.alive:
                 self.player_health = 0
                 self.health_bar.set_health(self.player_health)
+                
+                from src.ui.ai_dashboard import AIDashboard
+                from src.components.ai_stats_tracker import AIStatsTracker
+                dashboard = AIDashboard(self.screen, AIStatsTracker.get_stats(), "Level 2")
+                dashboard.run()
+
                 game_over_screen = GameOverScreen(self.screen)
                 result = game_over_screen.run()
                 if result == "restart":

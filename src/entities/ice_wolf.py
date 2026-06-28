@@ -115,6 +115,8 @@ class IceWolf(pygame.sprite.Sprite):
                 # Play attack animation on the wolf
                 self.update_action(4)  # Attack animation
                 self.is_attacking = True
+                from src.components.ai_stats_tracker import AIStatsTracker
+                AIStatsTracker.log_attack(self.name, 10)
                 if player.health <= 0:
                     player.check_alive()
 
@@ -154,6 +156,8 @@ class IceWolf(pygame.sprite.Sprite):
                 self.current_path = pathfind_func(current_tile, goal_tile, grid)
                 self.path_index = 0
                 self.last_goal_tile = goal_tile
+                from src.components.ai_stats_tracker import AIStatsTracker
+                AIStatsTracker.log_pathfinding(self.name)
 
             # Follow path
             if self.current_path and self.path_index < len(self.current_path):

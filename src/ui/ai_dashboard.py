@@ -4,9 +4,10 @@ import math
 import time
 
 class AIDashboard:
-    def __init__(self, screen, stats):
+    def __init__(self, screen, stats, stage_name=""):
         self.screen = screen
         self.stats = stats
+        self.stage_name = stage_name
         self.screen_width = screen.get_width()
         self.screen_height = screen.get_height()
 
@@ -34,7 +35,10 @@ class AIDashboard:
         pygame.draw.rect(self.screen, (255, 80, 80), popup_rect, width=3, border_radius=15)
 
         # 3. Vẽ Tiêu đề
-        title_surf = self.title_font.render("AI PERFORMANCE STATS", True, (255, 80, 80))
+        title_text = "AI PERFORMANCE STATS"
+        if self.stage_name:
+            title_text += f" - {self.stage_name.upper()}"
+        title_surf = self.title_font.render(title_text, True, (255, 80, 80))
         title_rect = title_surf.get_rect(center=(self.screen_width // 2, py + 40))
         self.screen.blit(title_surf, title_rect)
 
@@ -53,7 +57,27 @@ class AIDashboard:
         # Vẽ Header của bảng
         pygame.draw.rect(self.screen, (40, 40, 50), (px + 15, row_y_start, popup_width - 30, row_height), border_radius=5)
         
-        headers = ["Zombie (Thuat toan)", "Luot tim duong", "Luot tiep can", "Sat thuong"]
+        # Xác định nhãn cột đầu tiên dựa trên stage_name hoặc loại quái vật
+        first_col_label = "Quai vat (Thuat toan)"
+        if self.stage_name:
+            if "level 1" in self.stage_name.lower():
+                first_col_label = "Slime (Thuat toan)"
+            elif "level 2" in self.stage_name.lower():
+                first_col_label = "Ice Wolf (Thuat toan)"
+            elif "level 4" in self.stage_name.lower():
+                first_col_label = "Zombie (Thuat toan)"
+        else:
+            has_slime = any("slime" in k.lower() for k in self.stats.keys())
+            has_wolf = any("wolf" in k.lower() for k in self.stats.keys())
+            has_zombie = any("zombie" in k.lower() for k in self.stats.keys())
+            if has_slime:
+                first_col_label = "Slime (Thuat toan)"
+            elif has_wolf:
+                first_col_label = "Ice Wolf (Thuat toan)"
+            elif has_zombie:
+                first_col_label = "Zombie (Thuat toan)"
+
+        headers = [first_col_label, "Luot tim duong", "Luot tiep can", "Sat thuong"]
         for i, text in enumerate(headers):
             surf = self.header_font.render(text, True, (255, 255, 255))
             rect = surf.get_rect()
@@ -74,8 +98,22 @@ class AIDashboard:
             bg_color = (32, 32, 42) if idx % 2 == 0 else (28, 28, 36)
             pygame.draw.rect(self.screen, bg_color, (px + 15, ry, popup_width - 30, row_height), border_radius=5)
 
-            # 1. Cột Tên quái vật
-            name_surf = self.text_font.render(name, True, (230, 230, 255))
+            # 1. Cột Tên quái vật (Định dạng lại cho đẹp mắt)
+            display_name = name
+            if name.startswith("slime_"):
+                algo = name.replace("slime_", "").upper()
+                display_name = f"Slime ({algo})"
+            elif name.startswith("wolf_"):
+                algo = name.replace("wolf_", "").upper()
+                if algo == "ASTAR":
+                    algo = "A*"
+                elif algo == "GREEDY":
+                    algo = "Greedy"
+                elif algo == "IDA_STAR":
+                    algo = "IDA*"
+                display_name = f"Ice Wolf ({algo})"
+
+            name_surf = self.text_font.render(display_name, True, (230, 230, 255))
             name_rect = name_surf.get_rect(midleft=(col_x[0], ry + row_height // 2))
             self.screen.blit(name_surf, name_rect)
 
