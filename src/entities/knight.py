@@ -182,11 +182,7 @@ class Knight(pygame.sprite.Sprite):
         # Giới hạn vị trí không cho rơi khỏi màn hình
         self.rect.x = max(0, min(self.rect.x, map_width_px - self.rect.width))
         
-        if self.rect.bottom > map_height_px:
-            self.rect.bottom = map_height_px
-            self.vel_y = 0
-            self.in_air = False
-        elif self.rect.top < 0:
+        if self.rect.top < 0:
             self.rect.top = 0
             self.vel_y = 0
 

@@ -29,7 +29,7 @@ def main():
 
     # Khởi tạo thanh máu và danh sách màn mở khóa (mở khóa sẵn cả 6 màn để test)
     player_health = 100
-    unlocked_levels = [1]  # Mở khóa sẵn cả 6 màn để test
+    unlocked_levels = [1,2,3,4,5,6]  # Mở khóa sẵn cả 6 màn để test
 
     health_bar = HealthBar(20, 20, 140, 20, player_health)
 
