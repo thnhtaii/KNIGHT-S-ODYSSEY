@@ -13,6 +13,12 @@ class Dragon(BossKnight):
         self.name = "dragon"
         self.health = 30
         self.attack_cooldown = 2000
+        
+        # Thống kê hiệu suất AI
+        self.total_damage = 0.0
+        self.total_iterations = 0
+        self.total_time_ms = 0.0
+        self.call_count = 0
 
         # Scan down to find the floor tile
         tile_x = int(x) // battle_base.tile_width

@@ -22,18 +22,28 @@ class CSPSurround:
         return valid
 
     def solve_backtracking(self, player_pos, boss_positions):
-        """Thuật toán Backtracking thuần tuý."""
+        """Thuật toán Backtracking thuần tuý. Trả về (targets, time_ms, iterations)"""
+        import time
+        start_time = time.perf_counter()
+        iterations = 0
+
         px, py = player_pos
-        domain = self.get_valid_neighbors(px, py)
-        # Nếu domain quá nhỏ so với số boss, thêm chính vị trí player
-        if len(domain) < len(boss_positions):
-            domain.append((px, py))
+        base_domain = self.get_valid_neighbors(px, py)
+        if len(base_domain) < len(boss_positions):
+            base_domain.append((px, py))
             
         assignment = {}
         def backtrack(boss_idx):
+            nonlocal iterations
+            iterations += 1
             if boss_idx == len(boss_positions):
                 return True
-            for val in domain:
+            
+            # Ưu tiên các ô gần boss hiện tại nhất
+            bx, by = boss_positions[boss_idx]
+            sorted_domain = sorted(base_domain, key=lambda p: abs(p[0] - bx) + abs(p[1] - by))
+            
+            for val in sorted_domain:
                 if val not in assignment.values():
                     assignment[boss_idx] = val
                     if backtrack(boss_idx + 1):
@@ -42,10 +52,16 @@ class CSPSurround:
             return False
             
         backtrack(0)
-        return [assignment.get(i, boss_positions[i]) for i in range(len(boss_positions))]
+        targets = [assignment.get(i, boss_positions[i]) for i in range(len(boss_positions))]
+        time_ms = (time.perf_counter() - start_time) * 1000
+        return targets, time_ms, iterations
 
     def solve_ac3(self, player_pos, boss_positions):
-        """Sử dụng AC-3 để rút gọn domain, sau đó gán giá trị."""
+        """Sử dụng AC-3 để rút gọn domain. Trả về (targets, time_ms, iterations)"""
+        import time
+        start_time = time.perf_counter()
+        iterations = 0
+
         px, py = player_pos
         base_domain = self.get_valid_neighbors(px, py)
         if len(base_domain) < len(boss_positions):
@@ -60,6 +76,7 @@ class CSPSurround:
                 if i != j:
                     arcs.append((i, j))
                     
+        from collections import deque
         queue = deque(arcs)
         
         def revise(xi, xj):
@@ -72,6 +89,7 @@ class CSPSurround:
             return revised
             
         while queue:
+            iterations += 1
             xi, xj = queue.popleft()
             if revise(xi, xj):
                 if not domains[xi]:
@@ -80,36 +98,50 @@ class CSPSurround:
                     if xk != xi and xk != xj:
                         queue.append((xk, xi))
                         
-        # Gán theo domain đã rút gọn (đơn giản hoá bằng cách lấy phần tử đầu tiên hợp lệ)
+        # Gán theo domain đã rút gọn (đơn giản hoá bằng cách lấy phần tử hợp lệ gần nhất)
         assignment = {}
         for i in range(len(boss_positions)):
-            for val in domains[i]:
+            bx, by = boss_positions[i]
+            sorted_domain = sorted(domains[i], key=lambda p: abs(p[0] - bx) + abs(p[1] - by))
+            for val in sorted_domain:
                 if val not in assignment.values():
                     assignment[i] = val
                     break
             if i not in assignment:
                 assignment[i] = boss_positions[i] # Fallback
                 
-        return [assignment[i] for i in range(len(boss_positions))]
+        targets = [assignment[i] for i in range(len(boss_positions))]
+        time_ms = (time.perf_counter() - start_time) * 1000
+        return targets, time_ms, iterations
 
     def solve_min_conflicts(self, player_pos, boss_positions, max_steps=100):
-        """Thuật toán Min-Conflicts."""
+        """Thuật toán Min-Conflicts. Trả về (targets, time_ms, iterations)"""
+        import time
+        start_time = time.perf_counter()
+        iterations = 0
+
         px, py = player_pos
         domain = self.get_valid_neighbors(px, py)
         if len(domain) < len(boss_positions):
             domain.append((px, py))
             
-        # Khởi tạo ngẫu nhiên (có thể có conflict)
-        assignment = {i: random.choice(domain) for i in range(len(boss_positions))}
+        # Khởi tạo ngẫu nhiên nhưng ưu tiên gần boss
+        assignment = {}
+        for i in range(len(boss_positions)):
+            bx, by = boss_positions[i]
+            sorted_domain = sorted(domain, key=lambda p: abs(p[0] - bx) + abs(p[1] - by))
+            assignment[i] = sorted_domain[0]
         
         def count_conflicts(boss_idx, val):
             return sum(1 for j in range(len(boss_positions)) if j != boss_idx and assignment[j] == val)
             
         for _ in range(max_steps):
+            iterations += 1
             conflicted_vars = [i for i in range(len(boss_positions)) if count_conflicts(i, assignment[i]) > 0]
             if not conflicted_vars:
                 break # Đã giải xong
                 
+            import random
             var = random.choice(conflicted_vars)
             
             # Tìm giá trị giảm thiểu conflict
@@ -123,6 +155,11 @@ class CSPSurround:
                 elif c == min_c:
                     best_vals.append(val)
                     
-            assignment[var] = random.choice(best_vals)
+            bx, by = boss_positions[var]
+            sorted_best_vals = sorted(best_vals, key=lambda p: abs(p[0] - bx) + abs(p[1] - by))
+            assignment[var] = sorted_best_vals[0]
             
-        return [assignment[i] for i in range(len(boss_positions))]
+        targets = [assignment[i] for i in range(len(boss_positions))]
+        time_ms = (time.perf_counter() - start_time) * 1000
+        return targets, time_ms, iterations
+

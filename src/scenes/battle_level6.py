@@ -10,6 +10,7 @@ from src.entities.boss_robot import BossRobot
 from src.ui.settings_menu import SettingsMenu
 from src.ui.game_over import GameOverScreen
 from src.ui.game_victory import GameVictoryScreen
+from src.ui.ai_stats_level6 import AIStatsLevel6Screen
 from src.ai.adversarial_search import AdversarialSearch
 
 class FallingRock:
@@ -153,10 +154,26 @@ class BattleLevel6(BattleBase):
                         # Choose a random rock design
                         raw_rock = random.choice(rock_imgs)
                         
-                        # Calculate height, reducing thickness by 50% to balance stretching
-                        ph = int(pw * (raw_rock.get_height() / raw_rock.get_width()) * 0.5)
+                        # Crop empty transparent space and any thin selection border artifacts
+                        raw_rect = raw_rock.get_bounding_rect()
                         
-                        scaled_rock = pygame.transform.smoothscale(raw_rock, (pw, ph))
+                        # Shrink the rect by 4 pixels on all sides to crop out the faint border line
+                        # Make sure we don't shrink it below 1x1
+                        shrink_amount = 8
+                        if raw_rect.width > shrink_amount and raw_rect.height > shrink_amount:
+                            raw_rect.inflate_ip(-shrink_amount, -shrink_amount)
+                            
+                        cropped_rock = raw_rock.subsurface(raw_rect)
+                        
+                        # Calculate height, reducing thickness by 50% to balance stretching
+                        ph = int(pw * (cropped_rock.get_height() / cropped_rock.get_width()) * 0.5)
+                        
+                        scaled_rock = pygame.transform.smoothscale(cropped_rock, (pw, ph))
+                        
+                        # Apply a dark slate/blue tint to make it stand out from the castle background
+                        darken_surf = pygame.Surface((pw, ph), pygame.SRCALPHA)
+                        darken_surf.fill((100, 110, 130, 255)) # Dark cool-gray tint
+                        scaled_rock.blit(darken_surf, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
                         
                         # Store to draw later
                         self.floating_platforms.append({
@@ -173,6 +190,15 @@ class BattleLevel6(BattleBase):
         self.ai_pruned_branches = 0
         self.ai_thinking_time = 0.0
         self.ai_depth = 3
+        
+        # Accumulators for AI Performance Stats
+        self.total_minimax_nodes = 0
+        self.total_alphabeta_nodes = 0
+        self.total_expectimax_nodes = 0
+        self.total_alphabeta_pruned = 0
+        self.damage_phase1 = 0
+        self.damage_phase2 = 0
+        self.damage_phase3 = 0
         
         # Predictive player target position (for shadow rendering)
         self.pred_player_pos = (self.player.rect.centerx // self.tile_size, self.player.rect.bottom // self.tile_size - 1)
@@ -359,6 +385,19 @@ class BattleLevel6(BattleBase):
                         # Boss died! Complete level with victory
                         victory_screen = GameVictoryScreen(self.screen)
                         res = victory_screen.run()
+                        
+                        # Show AI Performance Stats after victory
+                        stats = {
+                            "total_minimax_nodes": self.total_minimax_nodes,
+                            "total_alphabeta_nodes": self.total_alphabeta_nodes,
+                            "total_expectimax_nodes": self.total_expectimax_nodes,
+                            "total_alphabeta_pruned": self.total_alphabeta_pruned,
+                            "damage_phase1": self.damage_phase1,
+                            "damage_phase2": self.damage_phase2,
+                            "damage_phase3": self.damage_phase3
+                        }
+                        AIStatsLevel6Screen(self.screen, stats).run()
+                        
                         if res == "menu": return "win"
                         if res == "quit": return "quit"
                 
@@ -376,6 +415,19 @@ class BattleLevel6(BattleBase):
             if not self.player.alive:
                 self.health_bar.set_health(0)
                 res = GameOverScreen(self.screen).run()
+                
+                # Show AI Performance Stats after game over
+                stats = {
+                    "total_minimax_nodes": self.total_minimax_nodes,
+                    "total_alphabeta_nodes": self.total_alphabeta_nodes,
+                    "total_expectimax_nodes": self.total_expectimax_nodes,
+                    "total_alphabeta_pruned": self.total_alphabeta_pruned,
+                    "damage_phase1": self.damage_phase1,
+                    "damage_phase2": self.damage_phase2,
+                    "damage_phase3": self.damage_phase3
+                }
+                AIStatsLevel6Screen(self.screen, stats).run()
+                
                 return res
 
             self.health_bar.set_health(self.player.health)
@@ -418,6 +470,7 @@ class BattleLevel6(BattleBase):
                 normal_cooldown=self.boss.normal_cooldown, max_depth=self.ai_depth
             )
             self.ai_nodes_evaluated = eval_nodes
+            self.total_minimax_nodes += eval_nodes
             
             # Log for debugging
             with open("boss_ai_debug.log", "a") as f:
@@ -434,6 +487,8 @@ class BattleLevel6(BattleBase):
             )
             self.ai_nodes_evaluated = eval_nodes
             self.ai_pruned_branches = pruned
+            self.total_alphabeta_nodes += eval_nodes
+            self.total_alphabeta_pruned += pruned
         else:
             # Phase 3: Expectimax
             self.ai_brain_mode = "EXPECTIMAX"
@@ -446,6 +501,7 @@ class BattleLevel6(BattleBase):
                 normal_cooldown=self.boss.normal_cooldown, danger_cols=danger_cols, max_depth=self.ai_depth
             )
             self.ai_nodes_evaluated = eval_nodes
+            self.total_expectimax_nodes += eval_nodes
             
         self.ai_thinking_time = (time.time() - t0) * 1000.0  # in ms
         
@@ -482,7 +538,9 @@ class BattleLevel6(BattleBase):
             if h.state == "warning" and not getattr(h, 'beam_hit', False):
                 px = self.player.rect.centerx // self.tile_size
                 if px == h.col:
-                    self.player.health -= 10
+                    dmg = 10
+                    self.player.health -= dmg
+                    self.damage_phase3 += dmg
                     self.player.is_hurt = True
                     self.player.update_action(8)
                     self.player.frame_index = 0
@@ -495,7 +553,9 @@ class BattleLevel6(BattleBase):
                 
                 # Check collision with player
                 if rock_rect.colliderect(self.player.rect):
-                    self.player.health -= 8
+                    dmg = 8
+                    self.player.health -= dmg
+                    self.damage_phase3 += dmg
                     self.player.is_hurt = True
                     self.player.update_action(8)
                     self.player.frame_index = 0
@@ -548,15 +608,6 @@ class BattleLevel6(BattleBase):
             self.screen.blit(warn_txt, txt_rect)
             
         # --- Wow Factor 1 replaced by Robot Core Color (in BossRobot.draw) ---
-
-        # --- Wow Factor 2: Draw Predictive Player Target Shadow (Ghost sprite) ---
-        if self.boss.alive and self.player.alive:
-            ghost_x = self.pred_player_pos[0] * self.tile_size
-            ghost_y = (self.pred_player_pos[1] + 1) * self.tile_size - self.player.rect.height
-            ghost_rect = pygame.Rect(ghost_x, ghost_y, self.player.rect.width, self.player.rect.height)
-            pygame.draw.rect(self.screen, (0, 255, 100, 80), ghost_rect, 2, border_radius=3)
-            label = self.font_overlay.render("Pred X", True, (0, 255, 100))
-            self.screen.blit(label, (ghost_rect.x, ghost_rect.y - 15))
 
         # Draw hazards (Falling rocks & warning zones)
         for h in self.hazards:

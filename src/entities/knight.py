@@ -145,6 +145,14 @@ class Knight(pygame.sprite.Sprite):
         self.rect.y += dy
         if on_ladder:
             on_ground = False
+            # Ngăn không cho leo xuyên trần (chặn 3 dải gạch trên cùng hoặc bất kỳ trần nào)
+            if dy < 0:
+                for obj in self.battle_base.wall_objects:
+                    rect = pygame.Rect(obj["x"], obj["y"], obj["width"], obj["height"])
+                    if self.rect.colliderect(rect):
+                        if rect.left < self.rect.centerx < rect.right:
+                            self.rect.top = rect.bottom
+                            break
         else:
             on_ground = self.check_collision('vertical', dy)
 

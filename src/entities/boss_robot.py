@@ -291,9 +291,13 @@ class BossRobot(pygame.sprite.Sprite):
         if can_fight and AdversarialSearch.is_in_range((bx, by), (px, py)):
             if current_time - getattr(player, 'last_hurt_time', 0) > 500:
                 if player.action == 4: # Knight Block
-                    player.health -= 3
+                    dmg = 3
                 else:
-                    player.health -= 15
+                    dmg = 15
+                player.health -= dmg
+                if self.health >= 70: self.battle_base.damage_phase1 += dmg
+                elif self.health >= 30: self.battle_base.damage_phase2 += dmg
+                else: self.battle_base.damage_phase3 += dmg
                 player.is_hurt = True
                 player.update_action(8)
                 player.last_hurt_time = current_time
@@ -314,9 +318,13 @@ class BossRobot(pygame.sprite.Sprite):
                     
         if can_fight and AdversarialSearch.is_in_range((bx, by), (px, py)):
             if player.action == 4:
-                player.health -= 3
+                dmg = 3
             else:
-                player.health -= 10
+                dmg = 10
+            player.health -= dmg
+            if self.health >= 70: self.battle_base.damage_phase1 += dmg
+            elif self.health >= 30: self.battle_base.damage_phase2 += dmg
+            else: self.battle_base.damage_phase3 += dmg
             player.is_hurt = True
             player.update_action(8)
             player.last_hurt_time = current_time
