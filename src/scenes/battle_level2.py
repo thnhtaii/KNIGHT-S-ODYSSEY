@@ -25,6 +25,8 @@ class BattleLevel2(BattleBase):
         self.player = None
         self.wolf_list = []
         self.logic_manager = LevelLogicManager(self.wolf_list)
+        from src.components.ai_stats_tracker import AIStatsTracker
+        AIStatsTracker.reset("Level 2")
 
         current_dir = os.path.dirname(os.path.abspath(__file__))
         project_root = os.path.dirname(os.path.dirname(current_dir))
@@ -111,12 +113,32 @@ class BattleLevel2(BattleBase):
             {"x": 583, "y": 444, "w": 150},  # Platform 6 (Lower Right)
         ]
 
+        # Tên thuật toán cho từng Ice Wolf
+        wolf_algo_names = ["wolf_astar", "wolf_greedy", "wolf_ida_star"]
+        
+        # Pre-count the algorithms that will spawn to check for duplicates
+        temp_wolf_names = []
+        for i in range(len(platforms)):
+            temp_wolf_names.append(wolf_algo_names[i % len(wolf_algo_names)])
+            
+        from collections import Counter
+        wolf_name_counts = Counter(temp_wolf_names)
+        wolf_spawned_counts = {}
+
+        wolf_count = 0
         for p in platforms:
             platform_left = p["x"] - p["w"] // 2
             move_area = pygame.Rect(platform_left, p["y"] - 80, p["w"], 160)
             wolf = IceWolf(p["x"], p["y"], 0.5, 2, self, move_area=move_area)
-            wolf.name = wolf_algo_names[wolf_count % len(wolf_algo_names)]
+            raw_name = wolf_algo_names[wolf_count % len(wolf_algo_names)]
             wolf_count += 1
+            
+            if wolf_name_counts[raw_name] >= 2:
+                wolf_spawned_counts[raw_name] = wolf_spawned_counts.get(raw_name, 0) + 1
+                wolf.name = f"{raw_name}_{wolf_spawned_counts[raw_name]}"
+            else:
+                wolf.name = raw_name
+                
             self.wolf_list.append(wolf)
 
 
@@ -167,6 +189,11 @@ class BattleLevel2(BattleBase):
                 door_rect = pygame.Rect(self.door_pos[0] - 50, self.door_pos[1] - 50, 100, 100)
                 # Check collision using player's world coordinates (self.player.rect)
                 if self.logic_manager.check_victory(self.player.rect, door_rect):
+                    from src.ui.ai_dashboard import AIDashboard
+                    from src.components.ai_stats_tracker import AIStatsTracker
+                    dashboard = AIDashboard(self.screen, AIStatsTracker.get_stats(), "Level 2")
+                    dashboard.run()
+
                     victory_screen = GameVictoryScreen(self.screen)
                     result = victory_screen.run()
                     if result == "menu":
@@ -315,11 +342,11 @@ class BattleLevel2(BattleBase):
                 for wolf in self.wolf_list[:]:  # Sao chép danh sách để tránh lỗi khi xóa
                     if wolf.alive:
                         # 1) Run pathfinding / movement
-                        if wolf.name == "wolf_astar":
+                        if wolf.name.startswith("wolf_astar"):
                             wolf.update_astar(self.player, self.grid, self.margin_data)
-                        elif wolf.name == "wolf_greedy":
+                        elif wolf.name.startswith("wolf_greedy"):
                             wolf.update_greedy(self.player, self.grid, self.margin_data)
-                        elif wolf.name == "wolf_ida_star":
+                        elif wolf.name.startswith("wolf_ida_star"):
                             wolf.update_ida_star(self.player, self.grid, self.margin_data)
                         else:
                             wolf.move()
@@ -344,6 +371,12 @@ class BattleLevel2(BattleBase):
             if not self.player.alive:
                 self.player_health = 0
                 self.health_bar.set_health(self.player_health)
+                
+                from src.ui.ai_dashboard import AIDashboard
+                from src.components.ai_stats_tracker import AIStatsTracker
+                dashboard = AIDashboard(self.screen, AIStatsTracker.get_stats(), "Level 2")
+                dashboard.run()
+
                 game_over_screen = GameOverScreen(self.screen)
                 result = game_over_screen.run()
                 if result == "restart":
@@ -445,7 +478,24 @@ class BattleLevel2(BattleBase):
                 if sprite.alive:
                     # Styled Cyberpunk HUD label capsule
                     font = pygame.font.SysFont("Consolas", 11, bold=True)
-                    algo_name = sprite.name.replace("wolf_", "").upper()
+                    
+                    raw_algo = sprite.name.replace("wolf_", "").upper()
+                    suffix = ""
+                    if "_" in raw_algo:
+                        parts = raw_algo.split("_")
+                        if parts[-1].isdigit():
+                            suffix = f" {parts[-1]}"
+                            raw_algo = "_".join(parts[:-1])
+                            
+                    if raw_algo == "ASTAR":
+                        algo_name = f"A*{suffix}"
+                    elif raw_algo == "GREEDY":
+                        algo_name = f"GREEDY{suffix}"
+                    elif raw_algo == "IDA_STAR":
+                        algo_name = f"IDA*{suffix}"
+                    else:
+                        algo_name = f"{raw_algo}{suffix}"
+                        
                     text_surface = font.render(algo_name, True, (0, 255, 255))
                     text_rect = text_surface.get_rect(center=(sprite.rect.centerx - self.camera_offset[0], sprite.rect.top - 15 - self.camera_offset[1]))
                     
