@@ -36,6 +36,22 @@ class BattleLevel1(BattleBase):
         self.BGDoor = pygame.image.load(os.path.join(BGDoor_dir, "BGDoor.png")).convert_alpha()
         self.BGDoor = pygame.transform.scale(self.BGDoor, (96, 89))
 
+        # Xác định trước các slime được sinh ra để đếm trùng
+        temp_slime_names = []
+        temp_count = 0
+        for obj in self.spawn_objects:
+            props = obj["properties"]
+            if props.get("enemy") == "yes":
+                names = ["slime_bfs", "slime_dfs", "slime_ucs"]
+                temp_slime_names.append(names[temp_count % 3])
+                temp_count += 1
+                if len(temp_slime_names) >= 5:
+                    break
+
+        from collections import Counter
+        slime_name_counts = Counter(temp_slime_names)
+        slime_spawned_counts = {}
+
         slime_count = 0
         for obj in self.spawn_objects:
             x = int(obj["x"])
@@ -57,6 +73,12 @@ class BattleLevel1(BattleBase):
                 if len(self.slime_list) >= 5:
                     continue
 
+                if slime_name_counts[current_slime_name] >= 2:
+                    slime_spawned_counts[current_slime_name] = slime_spawned_counts.get(current_slime_name, 0) + 1
+                    assigned_name = f"{current_slime_name}_{slime_spawned_counts[current_slime_name]}"
+                else:
+                    assigned_name = current_slime_name
+
                 move_area = pygame.Rect(x - 100, y - 50, 200, 100)
                 slime_dir = os.path.join(project_root, 'assets', 'sprites', 'slime')
                 custom_img_name = "custom_slime1.png" if len(self.slime_list) % 2 == 0 else "custom_slime2.png"
@@ -71,7 +93,7 @@ class BattleLevel1(BattleBase):
                 }
                 
                 slime = Slime(x, y, 1.0, 2, self, move_area=move_area, custom_img_path=custom_img_path, color_swap=color_swap)
-                slime.name = current_slime_name
+                slime.name = assigned_name
                 self.slime_list.append(slime)
 
         if not self.player:
@@ -299,11 +321,11 @@ class BattleLevel1(BattleBase):
                 # Cập nhật slime
                 for slime in self.slime_list[:]:  # Sao chép danh sách để tránh lỗi khi xóa
                     if slime.alive:
-                        if slime.name == "slime_bfs":
+                        if slime.name.startswith("slime_bfs"):
                             slime.update_bfs(self.player, self.grid, self.margin_data)
-                        elif slime.name == "slime_dfs":
+                        elif slime.name.startswith("slime_dfs"):
                             slime.update_dfs(self.player, self.grid, self.margin_data)
-                        elif slime.name == "slime_ucs":
+                        elif slime.name.startswith("slime_ucs"):
                             slime.update_ucs(self.player, self.grid, self.margin_data)
                         else:
                             slime.move()
@@ -377,7 +399,7 @@ class BattleLevel1(BattleBase):
                 self.screen.blit(sprite.image, (draw_x, draw_y))
                 if sprite.alive:
                     font = pygame.font.SysFont("Arial", 10, bold=True)
-                    algo_name = sprite.name.replace("slime_", "").upper()
+                    algo_name = sprite.name.replace("slime_", "").replace("_", " ").upper()
                     text_surface = font.render(algo_name, True, (255, 255, 255))
                     text_rect = text_surface.get_rect(center=(draw_x + sprite.rect.width // 2, draw_y - 12))
                     # Draw a small dark background box for high legibility

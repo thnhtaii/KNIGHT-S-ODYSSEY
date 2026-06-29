@@ -92,18 +92,26 @@ class AIDashboard:
 
             # 1. Cột Tên quái vật (Định dạng lại cho đẹp mắt)
             display_name = name
-            if name.startswith("slime_"):
-                algo = name.replace("slime_", "").upper()
-                display_name = f"Slime ({algo})"
-            elif name.startswith("wolf_"):
-                algo = name.replace("wolf_", "").upper()
+            suffix = ""
+            base_name = name
+            if "_" in name:
+                parts = name.split("_")
+                if parts[-1].isdigit():
+                    suffix = f" {parts[-1]}"
+                    base_name = "_".join(parts[:-1])
+
+            if base_name.startswith("slime_"):
+                algo = base_name.replace("slime_", "").upper()
+                display_name = f"Slime ({algo}{suffix})"
+            elif base_name.startswith("wolf_"):
+                algo = base_name.replace("wolf_", "").upper()
                 if algo == "ASTAR":
                     algo = "A*"
                 elif algo == "GREEDY":
                     algo = "Greedy"
                 elif algo == "IDA_STAR":
                     algo = "IDA*"
-                display_name = f"Ice Wolf ({algo})"
+                display_name = f"Ice Wolf ({algo}{suffix})"
 
             name_surf = self.text_font.render(display_name, True, (230, 230, 255))
             name_rect = name_surf.get_rect(midleft=(col_x[0], ry + row_height // 2))
