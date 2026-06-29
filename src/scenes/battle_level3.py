@@ -21,6 +21,8 @@ class BattleLevel3(BattleBase):
         self.player = None
         self.slime_list = [] # Lưu binh sĩ để LevelLogicManager tương thích
         self.logic_manager = LevelLogicManager(self.slime_list)
+        from src.components.ai_stats_tracker import AIStatsTracker
+        AIStatsTracker.reset("Level 3")
 
         current_dir = os.path.dirname(os.path.abspath(__file__))
         project_root = os.path.dirname(os.path.dirname(current_dir))
@@ -67,7 +69,13 @@ class BattleLevel3(BattleBase):
                         move_area = pygame.Rect(480, y - 50, 304, 100)
                 
                 soldier = Soldier(x, y, scale=0.5, speed=2, battle_base=self, move_area=move_area)
-                soldier.name = f"soldier_{algo_name}"
+                soldier.algo = algo_name
+                display_algo = "Hill Climbing" if "hill_climb" in algo_name else (
+                    "Simulated Annealing" if "simulated_annealing" in algo_name else (
+                        "Local Beam" if "local_beam" in algo_name else algo_name
+                    )
+                )
+                soldier.name = f"Binh si {len(self.slime_list) + 1} ({display_algo})"
                 self.slime_list.append(soldier)
 
         if not self.player:
@@ -161,6 +169,11 @@ class BattleLevel3(BattleBase):
             if self.door_pos:
                 door_rect = pygame.Rect(self.door_pos[0], self.door_pos[1] - 64, 64, 64)
                 if self.logic_manager.is_door_unlocked() and self.logic_manager.check_victory(self.player.rect, door_rect):
+                    from src.ui.ai_dashboard import AIDashboard
+                    from src.components.ai_stats_tracker import AIStatsTracker
+                    dashboard = AIDashboard(self.screen, AIStatsTracker.get_stats())
+                    dashboard.run()
+
                     victory_screen = GameVictoryScreen(self.screen)
                     result = victory_screen.run()
                     if result == "menu":
@@ -283,11 +296,11 @@ class BattleLevel3(BattleBase):
                 # Cập nhật chuyển động của binh sĩ (Soldier)
                 for slime in self.slime_list[:]:
                     if slime.alive:
-                        if "hill_climb" in slime.name:
+                        if "hill_climb" in slime.algo:
                             slime.update_hill_climb(self.player, self.grid, self.margin_data)
-                        elif "simulated_annealing" in slime.name:
+                        elif "simulated_annealing" in slime.algo:
                             slime.update_simulated_annealing(self.player, self.grid, self.margin_data)
-                        elif "local_beam" in slime.name:
+                        elif "local_beam" in slime.algo:
                             slime.update_local_beam(self.player, self.grid, self.margin_data)
                         else:
                             slime.move()
@@ -307,6 +320,12 @@ class BattleLevel3(BattleBase):
             if not self.player.alive:
                 self.player_health = 0
                 self.health_bar.set_health(self.player_health)
+                
+                from src.ui.ai_dashboard import AIDashboard
+                from src.components.ai_stats_tracker import AIStatsTracker
+                dashboard = AIDashboard(self.screen, AIStatsTracker.get_stats())
+                dashboard.run()
+                
                 game_over_screen = GameOverScreen(self.screen)
                 result = game_over_screen.run()
                 if result == "restart":
@@ -359,7 +378,7 @@ class BattleLevel3(BattleBase):
                 # Hiển thị tên thuật toán viết hoa nổi sát trên đầu mỗi binh sĩ
                 if sprite.alive:
                     font = pygame.font.SysFont("Arial", 10, bold=True)
-                    algo_name = sprite.name.replace("soldier_", "").replace("_", " ").upper()
+                    algo_name = sprite.algo.replace("_", " ").upper()
                     text_surface = font.render(algo_name, True, (255, 255, 255))
                     text_surface.set_alpha(150)
                     # Binh sĩ tỉ lệ 0.5 (75x75px) có khoảng không trong suốt phía trên, draw_y + 15 sẽ đặt chữ sát trên đầu lính

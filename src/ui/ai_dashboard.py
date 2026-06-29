@@ -53,7 +53,14 @@ class AIDashboard:
         # Vẽ Header của bảng
         pygame.draw.rect(self.screen, (40, 40, 50), (px + 15, row_y_start, popup_width - 30, row_height), border_radius=5)
         
-        headers = ["Zombie (Thuat toan)", "Luot tim duong", "Luot tiep can", "Sat thuong"]
+        # Tự động điều chỉnh tiêu đề cột dựa trên loại kẻ địch (Zombie ở màn 4, Binh si ở màn 3)
+        enemy_type = "Binh si"
+        if self.stats:
+            first_key = next(iter(self.stats.keys()))
+            if "Zombie" in first_key:
+                enemy_type = "Zombie"
+
+        headers = [f"{enemy_type} (Thuat toan)", "Luot tim duong", "Luot tiep can", "Sat thuong"]
         for i, text in enumerate(headers):
             surf = self.header_font.render(text, True, (255, 255, 255))
             rect = surf.get_rect()

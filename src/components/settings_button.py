@@ -42,7 +42,8 @@ class SettingsButton:
             self.mute_icon = pygame.Surface((64, 64))
             self.mute_icon.fill((128, 128, 128))
 
-        self.is_muted = False
+        from src.components.music_manager import MusicManager
+        self.is_muted = MusicManager.is_muted
         self.settings_menu_open = False
         self.update_button()
 
@@ -60,17 +61,18 @@ class SettingsButton:
         if event.type == pygame.MOUSEBUTTONDOWN:
             if self.settings_button_rect.collidepoint(event.pos):
                 self.settings_menu_open = not self.settings_menu_open
+                from src.components.music_manager import MusicManager
+                self.is_muted = MusicManager.is_muted
                 return None
             if self.settings_menu_open:
                 if hasattr(self, 'home_button_rect') and self.home_button_rect.collidepoint(event.pos):
                     print("Clicked Home button!")
                     return "home"
                 if hasattr(self, 'volume_button_rect') and self.volume_button_rect.collidepoint(event.pos):
-                    self.is_muted = not self.is_muted
-                if self.is_muted:
-                    pygame.mixer.music.pause()
-                else:
-                    pygame.mixer.music.unpause()
+                    from src.components.music_manager import MusicManager
+                    manager = MusicManager()
+                    manager.toggle_mute()
+                    self.is_muted = MusicManager.is_muted
         return None
     
     def update_position(self, screen):

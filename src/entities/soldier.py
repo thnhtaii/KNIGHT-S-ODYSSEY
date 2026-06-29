@@ -135,6 +135,8 @@ class Soldier(Slime):
             self.path = random_restart_hill_climbing_path(current_tile, goal_tile, grid)
             self.path_index = 0
             self.last_goal_tile = goal_tile
+            from src.components.ai_stats_tracker import AIStatsTracker
+            AIStatsTracker.log_pathfinding(self.name)
             
         self.follow_path(margin_data)
 
@@ -156,6 +158,8 @@ class Soldier(Slime):
             self.path = simulated_annealing_path(current_tile, goal_tile, grid)
             self.path_index = 0
             self.last_goal_tile = goal_tile
+            from src.components.ai_stats_tracker import AIStatsTracker
+            AIStatsTracker.log_pathfinding(self.name)
             
         self.follow_path(margin_data)
 
@@ -177,6 +181,8 @@ class Soldier(Slime):
             self.path = local_beam_path(current_tile, goal_tile, grid)
             self.path_index = 0
             self.last_goal_tile = goal_tile
+            from src.components.ai_stats_tracker import AIStatsTracker
+            AIStatsTracker.log_pathfinding(self.name)
             
         self.follow_path(margin_data)
 
@@ -211,3 +217,11 @@ class Soldier(Slime):
             self.update_action(1 if abs(self.rect.centerx - target_x) > self.speed else 0)
         else:
             self.update_action(0)
+
+    def try_attack_player(self, player):
+        old_health = player.health
+        super().try_attack_player(player)
+        if player.health < old_health:
+            damage = old_health - player.health
+            from src.components.ai_stats_tracker import AIStatsTracker
+            AIStatsTracker.log_attack(self.name, damage)

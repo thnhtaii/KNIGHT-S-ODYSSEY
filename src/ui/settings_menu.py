@@ -21,6 +21,13 @@ class SettingsMenu:
         self.volume_icon = pygame.image.load(os.path.join(project_root, 'assets', 'icons', 'volume_icon.png'))
         self.volume_icon = pygame.transform.scale(self.volume_icon, (50, 50))  # Resize icon Volume (nhỏ hơn)
 
+        try:
+            self.mute_icon = pygame.image.load(os.path.join(project_root, 'assets', 'icons', 'mute_icon.png'))
+            self.mute_icon = pygame.transform.scale(self.mute_icon, (50, 50))
+        except FileNotFoundError:
+            self.mute_icon = pygame.Surface((50, 50))
+            self.mute_icon.fill((128, 128, 128))
+
         self.back_icon = pygame.image.load(os.path.join(project_root, 'assets', 'icons', 'back_icon.png'))
         self.back_icon = pygame.transform.scale(self.back_icon, (50, 50))  # Resize icon Back (nhỏ hơn)
 
@@ -43,7 +50,9 @@ class SettingsMenu:
                     if self.home_button.collidepoint(event.pos):
                         return "menu"  # Quay lại menu chính
                     elif self.volume_button.collidepoint(event.pos):
-                        print("Volume settings clicked!")  # Xử lý âm thanh (hiện tại chỉ in ra console)
+                        from src.components.music_manager import MusicManager
+                        manager = MusicManager()
+                        manager.toggle_mute()
                     elif self.back_button.collidepoint(event.pos):
                         return "back"  # Quay lại màn chơi
                     elif self.back_button_rect.collidepoint(event.pos):
@@ -62,8 +71,12 @@ class SettingsMenu:
         # Vẽ icon Home
         self.screen.blit(self.home_icon, self.home_button.topleft)
 
-        # Vẽ icon Volume
-        self.screen.blit(self.volume_icon, self.volume_button.topleft)
+        # Vẽ icon Volume hoặc Mute dựa trên trạng thái tắt nhạc toàn cục
+        from src.components.music_manager import MusicManager
+        if MusicManager.is_muted:
+            self.screen.blit(self.mute_icon, self.volume_button.topleft)
+        else:
+            self.screen.blit(self.volume_icon, self.volume_button.topleft)
 
         # Vẽ icon Back
         self.screen.blit(self.back_icon, self.back_button.topleft)
