@@ -36,7 +36,7 @@ class AIStatsLevel6Screen:
         
         # Columns
         col_x = [self.rect.x + 30, self.rect.x + 280, self.rect.x + 460, self.rect.x + 620]
-        headers = ["Thuật toán", "Tổng số Node", "Nhánh bị cắt", "Sát thương"]
+        headers = ["Boss(Thuat toan)", "Tong so Node", "Nhanh bi Prune", "Sat thuong"]
         
         # Draw Headers
         header_y = self.rect.y + 100
@@ -53,9 +53,9 @@ class AIStatsLevel6Screen:
         
         # Draw Rows
         rows = [
-            ("Phase 1 (Minimax)", str(self.stats.get("total_minimax_nodes", 0)), "N/A", f"{self.stats.get('damage_phase1', 0)} HP"),
+            ("Phase 1 (Minimax)", str(self.stats.get("total_minimax_nodes", 0)), "-", f"{self.stats.get('damage_phase1', 0)} HP"),
             ("Phase 2 (Alpha-Beta)", str(self.stats.get("total_alphabeta_nodes", 0)), str(self.stats.get("total_alphabeta_pruned", 0)), f"{self.stats.get('damage_phase2', 0)} HP"),
-            ("Phase 3 (Expectimax)", str(self.stats.get("total_expectimax_nodes", 0)), "N/A", f"{self.stats.get('damage_phase3', 0)} HP")
+            ("Phase 3 (Expectimax)", str(self.stats.get("total_expectimax_nodes", 0)), "-", f"{self.stats.get('damage_phase3', 0)} HP")
         ]
         
         start_y = header_y + 60

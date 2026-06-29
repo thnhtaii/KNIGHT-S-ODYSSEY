@@ -101,10 +101,15 @@ class BossRobot(pygame.sprite.Sprite):
         colors = ['blue', 'yellow', 'red']
         
         for color in colors:
+            if color == 'red':
+                defense_file = 'robot_defense_yellow.png'
+            else:
+                defense_file = f'robot_defense_{color}.png'
+                
             sheet_files = {
                 'walk': f'robot_walk_{color}.png',
                 'attack': f'robot_attack_{color}.png',
-                'defense': f'robot_defense_{color}.png'
+                'defense': defense_file
             }
             
             actions_map = ['walk', 'walk', 'attack', 'defense', 'walk']

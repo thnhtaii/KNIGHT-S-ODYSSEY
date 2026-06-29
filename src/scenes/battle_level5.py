@@ -568,24 +568,6 @@ class BattleLevel5(BattleBase):
                 self.player.update_action(8)
                 self.player.frame_index = 0
                 self.last_trapped_damage_time = current_time
-                
-                # Phân bổ sát thương cho các rồng còn sống tỷ lệ nghịch với khoảng cách tới người chơi
-                active_bosses = [b for b in self.boss_list if b.alive]
-                if active_bosses:
-                    px, py = self.player.rect.centerx, self.player.rect.centery
-                    distances = []
-                    for b in active_bosses:
-                        dist = abs(b.rect.centerx - px) + abs(b.rect.centery - py)
-                        distances.append(max(1, dist)) # Tránh chia cho 0
-                        
-                    # Tính tổng trọng số (1/distance)
-                    weights = [1.0 / d for d in distances]
-                    total_weight = sum(weights)
-                    
-                    for i, b in enumerate(active_bosses):
-                        dmg_share = 10.0 * (weights[i] / total_weight)
-                        b.total_damage += dmg_share
-                        
                 if self.player.health <= 0:
                     self.player.check_alive()
 

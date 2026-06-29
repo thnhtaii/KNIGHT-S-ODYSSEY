@@ -36,7 +36,7 @@ class AIStatsLevel5Screen:
         
         # Columns
         col_x = [self.rect.x + 30, self.rect.x + 280, self.rect.x + 460, self.rect.x + 620]
-        headers = ["Rồng (Thuật toán)", "Vòng lặp/Phép gán", "T.Gian tính (ms)", "Sát thương"]
+        headers = ["Rong(Thuat toan)", "Vong lap", "T.Gian tinh(ms)", "Sat thuong"]
         
         # Draw Headers
         header_y = self.rect.y + 100
@@ -53,9 +53,9 @@ class AIStatsLevel5Screen:
         
         # Draw Rows
         rows = [
-            ("Rồng 1 (Backtracking)", str(self.stats.get("bt_iterations", 0)), f"{self.stats.get('bt_time_ms', 0):.2f}", f"{self.stats.get('bt_damage', 0):.1f} HP"),
-            ("Rồng 2 (AC-3)", str(self.stats.get("ac3_iterations", 0)), f"{self.stats.get('ac3_time_ms', 0):.2f}", f"{self.stats.get('ac3_damage', 0):.1f} HP"),
-            ("Rồng 3 (Min-Conflicts)", str(self.stats.get("mc_iterations", 0)), f"{self.stats.get('mc_time_ms', 0):.2f}", f"{self.stats.get('mc_damage', 0):.1f} HP")
+            ("Rong 1 (Backtracking)", str(self.stats.get("bt_iterations", 0)), f"{self.stats.get('bt_time_ms', 0):.2f}", f"{self.stats.get('bt_damage', 0):.1f} HP"),
+            ("Rong 2 (AC-3)", str(self.stats.get("ac3_iterations", 0)), f"{self.stats.get('ac3_time_ms', 0):.2f}", f"{self.stats.get('ac3_damage', 0):.1f} HP"),
+            ("Rong 3 (Min-Conflicts)", str(self.stats.get("mc_iterations", 0)), f"{self.stats.get('mc_time_ms', 0):.2f}", f"{self.stats.get('mc_damage', 0):.1f} HP")
         ]
         
         start_y = header_y + 60

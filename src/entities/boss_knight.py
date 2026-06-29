@@ -121,6 +121,8 @@ class BossKnight(pygame.sprite.Sprite):
                 player.last_hurt_time = current_time
                 self.last_attack_time = current_time
                 self.update_action(2) # attack
+                if hasattr(self, 'total_damage'):
+                    self.total_damage += 15
                 if player.health <= 0:
                     player.check_alive()
 

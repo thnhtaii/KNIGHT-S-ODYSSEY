@@ -248,14 +248,15 @@ class BattleLevel6(BattleBase):
                                     py = self.player.rect.bottom // self.tile_size - 1
                                     bx = self.boss.rect.centerx // self.tile_size
                                     by = self.boss.rect.bottom // self.tile_size - 1
-                                    
-                                    same_height = abs(py - by) <= 1
-                                    is_facing = (self.player.direction == 1 and bx >= px - 1) or \
-                                                (self.player.direction == -1 and bx <= px + 1)
-                                    in_range = abs(px - bx) <= 6
-                                                
-                                    can_fight = same_height and is_facing and in_range
-                                                
+                                    # Tạo vùng hitbox của thanh kiếm (rộng 80, cao 60)
+                                    sword_rect = pygame.Rect(0, 0, 80, 60)
+                                    sword_rect.centery = self.player.rect.centery
+                                    if self.player.direction == 1:
+                                        sword_rect.left = self.player.rect.centerx
+                                    else:
+                                        sword_rect.right = self.player.rect.centerx
+                                        
+                                    can_fight = sword_rect.colliderect(self.boss.rect)
                                     if can_fight:
                                         is_back = (px < bx and self.boss.direction > 0) or \
                                                   (px > bx and self.boss.direction < 0)
