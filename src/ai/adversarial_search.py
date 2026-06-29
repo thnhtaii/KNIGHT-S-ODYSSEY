@@ -140,8 +140,8 @@ class AdversarialSearch:
 
     @staticmethod
     def is_in_range(pos1, pos2):
-        # Combat range (Chebyshev distance <= 2 grid cells)
-        return max(abs(pos1[0] - pos2[0]), abs(pos1[1] - pos2[1])) <= 2
+        # Combat range: X distance <= 2, Y distance <= 1
+        return abs(pos1[0] - pos2[0]) <= 2 and abs(pos1[1] - pos2[1]) <= 1
 
     @staticmethod
     def simulate_state(boss_pos, player_pos, boss_hp, player_hp, boss_act, player_act, grid, boss_dir=-1):
@@ -226,27 +226,30 @@ class AdversarialSearch:
             combo_cooldown=combo_cooldown, shield_cooldown=shield_cooldown, normal_cooldown=normal_cooldown, boss_hp=boss_hp
         )
         
+        nodes_evaluated = 0
         for b_act in b_actions:
             # Simulate boss move (player waits)
             next_b_pos, next_p_pos, next_b_hp, next_p_hp = AdversarialSearch.simulate_state(
                 boss_pos, player_pos, boss_hp, player_hp, b_act, "WAIT", grid, boss_dir=boss_dir
             )
             # Pass turn to player (is_max_turn=False)
-            val = AdversarialSearch._minimax_value(
+            val, nodes = AdversarialSearch._minimax_value(
                 grid, next_b_pos, next_p_pos, next_b_hp, next_p_hp, 
                 depth=1, is_max_turn=False, player_action=player_action, boss_dir=boss_dir, max_depth=max_depth
             )
+            nodes_evaluated += nodes
             if val > best_val:
                 best_val = val
                 best_act = b_act
                 
-        return best_act, len(b_actions)
+        return best_act, nodes_evaluated
 
     @staticmethod
     def _minimax_value(grid, boss_pos, player_pos, boss_hp, player_hp, depth, is_max_turn, player_action, boss_dir, max_depth):
         if depth >= max_depth or boss_hp <= 0 or player_hp <= 0:
-            return AdversarialSearch.evaluate(boss_pos, player_pos, boss_hp, player_hp, "WAIT", "WAIT")
+            return AdversarialSearch.evaluate(boss_pos, player_pos, boss_hp, player_hp, "WAIT", "WAIT"), 1
             
+        nodes = 1
         if is_max_turn:
             val = -float('inf')
             b_actions = AdversarialSearch.get_valid_actions(boss_pos, is_boss=True, grid=grid, other_pos=player_pos, boss_hp=boss_hp)
@@ -254,9 +257,10 @@ class AdversarialSearch:
                 nb_pos, np_pos, nb_hp, np_hp = AdversarialSearch.simulate_state(
                     boss_pos, player_pos, boss_hp, player_hp, b_act, "WAIT", grid, boss_dir=boss_dir
                 )
-                v = AdversarialSearch._minimax_value(grid, nb_pos, np_pos, nb_hp, np_hp, depth + 1, False, player_action, boss_dir, max_depth)
+                v, child_nodes = AdversarialSearch._minimax_value(grid, nb_pos, np_pos, nb_hp, np_hp, depth + 1, False, player_action, boss_dir, max_depth)
+                nodes += child_nodes
                 if v > val: val = v
-            return val
+            return val, nodes
         else:
             val = float('inf')
             if depth == 1 and player_action in (3, 4):
@@ -268,9 +272,10 @@ class AdversarialSearch:
                 nb_pos, np_pos, nb_hp, np_hp = AdversarialSearch.simulate_state(
                     boss_pos, player_pos, boss_hp, player_hp, "WAIT", p_act, grid, boss_dir=boss_dir
                 )
-                v = AdversarialSearch._minimax_value(grid, nb_pos, np_pos, nb_hp, np_hp, depth + 1, True, player_action, boss_dir, max_depth)
+                v, child_nodes = AdversarialSearch._minimax_value(grid, nb_pos, np_pos, nb_hp, np_hp, depth + 1, True, player_action, boss_dir, max_depth)
+                nodes += child_nodes
                 if v < val: val = v
-            return val
+            return val, nodes
 
     # --- 2. Alpha-Beta Pruning ---
     @staticmethod
@@ -381,26 +386,29 @@ class AdversarialSearch:
         sim_scores.sort(key=lambda x: x[0])
         best_p_act = sim_scores[0][1] if sim_scores else "WAIT"
 
+        nodes_evaluated = 0
         for b_act in b_actions:
             next_b_pos, next_p_pos, next_b_hp, next_p_hp = AdversarialSearch.simulate_state(
                 boss_pos, player_pos, boss_hp, player_hp, b_act, "WAIT", grid, boss_dir=boss_dir
             )
-            val = AdversarialSearch._expectimax_value(
+            val, nodes = AdversarialSearch._expectimax_value(
                 grid, next_b_pos, next_p_pos, next_b_hp, next_p_hp, 
                 depth=1, is_max_turn=False, best_p_act=best_p_act, player_action=player_action,
                 boss_dir=boss_dir, danger_cols=danger_cols, max_depth=max_depth
             )
+            nodes_evaluated += nodes
             if val > best_val:
                 best_val = val
                 best_act = b_act
                 
-        return best_act, len(b_actions) * len(p_actions)
+        return best_act, nodes_evaluated
 
     @staticmethod
     def _expectimax_value(grid, boss_pos, player_pos, boss_hp, player_hp, depth, is_max_turn, best_p_act, player_action, boss_dir, danger_cols, max_depth):
         if depth >= max_depth or boss_hp <= 0 or player_hp <= 0:
-            return AdversarialSearch.evaluate(boss_pos, player_pos, boss_hp, player_hp, "WAIT", "WAIT", danger_cols)
+            return AdversarialSearch.evaluate(boss_pos, player_pos, boss_hp, player_hp, "WAIT", "WAIT", danger_cols), 1
             
+        nodes = 1
         if is_max_turn:
             val = -float('inf')
             b_actions = AdversarialSearch.get_valid_actions(boss_pos, is_boss=True, grid=grid, other_pos=player_pos, boss_hp=boss_hp)
@@ -408,11 +416,12 @@ class AdversarialSearch:
                 nb_pos, np_pos, nb_hp, np_hp = AdversarialSearch.simulate_state(
                     boss_pos, player_pos, boss_hp, player_hp, b_act, "WAIT", grid, boss_dir=boss_dir
                 )
-                v = AdversarialSearch._expectimax_value(
+                v, child_nodes = AdversarialSearch._expectimax_value(
                     grid, nb_pos, np_pos, nb_hp, np_hp, depth + 1, False, best_p_act, player_action, boss_dir, danger_cols, max_depth
                 )
+                nodes += child_nodes
                 if v > val: val = v
-            return val
+            return val, nodes
         else:
             expected_val = 0.0
             if depth == 1 and player_action in (3, 4):
@@ -424,13 +433,14 @@ class AdversarialSearch:
                 nb_pos, np_pos, nb_hp, np_hp = AdversarialSearch.simulate_state(
                     boss_pos, player_pos, boss_hp, player_hp, "WAIT", p_act, grid, boss_dir=boss_dir
                 )
-                v = AdversarialSearch._expectimax_value(
+                v, child_nodes = AdversarialSearch._expectimax_value(
                     grid, nb_pos, np_pos, nb_hp, np_hp, depth + 1, True, best_p_act, player_action, boss_dir, danger_cols, max_depth
                 )
+                nodes += child_nodes
                 
                 if p_act == best_p_act:
                     prob = 0.6 + (0.4 / len(p_actions))
                 else:
                     prob = 0.4 / len(p_actions)
                 expected_val += prob * v
-            return expected_val
+            return expected_val, nodes

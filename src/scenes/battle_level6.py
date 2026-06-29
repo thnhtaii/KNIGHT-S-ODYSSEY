@@ -10,6 +10,7 @@ from src.entities.boss_robot import BossRobot
 from src.ui.settings_menu import SettingsMenu
 from src.ui.game_over import GameOverScreen
 from src.ui.game_victory import GameVictoryScreen
+from src.ui.ai_stats_level6 import AIStatsLevel6Screen
 from src.ai.adversarial_search import AdversarialSearch
 
 class FallingRock:
@@ -23,6 +24,7 @@ class FallingRock:
         self.spawn_time = pygame.time.get_ticks()
         self.warning_duration = 1000  # 1 second warning
         self.size = 20
+        self.beam_hit = False
 
     def update(self):
         now = pygame.time.get_ticks()
@@ -47,8 +49,15 @@ class BattleLevel6(BattleBase):
         current_dir = os.path.dirname(os.path.abspath(__file__))
         project_root = os.path.dirname(os.path.dirname(current_dir))
         
-        # Override background image to use assets/backgrounds/7.jpg
-        bg_path = os.path.join(project_root, "assets", "backgrounds", "7.jpg")
+        # --- WOW FACTOR: Custom Stone Brick Tiles for Castle Theme ---
+        custom_tile_path = os.path.join(project_root, "assets", "sprites", "terrain", "castle_stone_brick.bmp")
+        if os.path.exists(custom_tile_path) and 54 in getattr(self, 'tiles', {}):
+            raw_brick = pygame.image.load(custom_tile_path).convert_alpha()
+            scaled_brick = pygame.transform.scale(raw_brick, (self.tile_width, self.tile_height))
+            self.tiles[54] = scaled_brick
+        
+        # Override background image to use assets/backgrounds/level6_bg.png
+        bg_path = os.path.join(project_root, "assets", "backgrounds", "level6_bg.png")
         if os.path.exists(bg_path):
             bg_raw = pygame.image.load(bg_path).convert()
             map_pixel_w = self.map_width * self.tile_width
@@ -72,7 +81,7 @@ class BattleLevel6(BattleBase):
                 self.player = Knight(x, y, scale=0.35, speed=4, battle_base=self)
                 self.player_group = pygame.sprite.Group(self.player)
             elif name == "boss_robot":
-                self.boss = BossRobot(x, y, scale=0.15, speed=3, battle_base=self)
+                self.boss = BossRobot(x, y, scale=0.175, speed=3, battle_base=self)
                 self.enemy_group = pygame.sprite.Group(self.boss)
 
         if not self.player:
@@ -119,12 +128,77 @@ class BattleLevel6(BattleBase):
         self.last_ai_update = 0
         self.ai_update_interval = 300  # run search every 300ms
         
+        # Replace floating square tiles with the new rock images
+        rock_img_path1 = os.path.join(project_root, "assets", "sprites", "terrain", "floating_rock_1.png")
+        rock_img_path2 = os.path.join(project_root, "assets", "sprites", "terrain", "floating_rock_2.png")
+        
+        self.floating_platforms = []
+        if os.path.exists(rock_img_path1) and os.path.exists(rock_img_path2) and len(self.tile_layers) > 1:
+            rock_imgs = [
+                pygame.image.load(rock_img_path1).convert_alpha(),
+                pygame.image.load(rock_img_path2).convert_alpha()
+            ]
+            layer = self.tile_layers[1]
+            for row in range(self.map_height):
+                col = 0
+                while col < self.map_width:
+                    idx = row * self.map_width + col
+                    if layer[idx] == 54:
+                        start_col = col
+                        while col < self.map_width and layer[row * self.map_width + col] == 54:
+                            layer[row * self.map_width + col] = 0 # Hide original tile
+                            col += 1
+                        span = col - start_col
+                        pw = span * self.tile_width
+                        
+                        # Choose a random rock design
+                        raw_rock = random.choice(rock_imgs)
+                        
+                        # Crop empty transparent space and any thin selection border artifacts
+                        raw_rect = raw_rock.get_bounding_rect()
+                        
+                        # Shrink the rect by 4 pixels on all sides to crop out the faint border line
+                        # Make sure we don't shrink it below 1x1
+                        shrink_amount = 8
+                        if raw_rect.width > shrink_amount and raw_rect.height > shrink_amount:
+                            raw_rect.inflate_ip(-shrink_amount, -shrink_amount)
+                            
+                        cropped_rock = raw_rock.subsurface(raw_rect)
+                        
+                        # Calculate height, reducing thickness by 50% to balance stretching
+                        ph = int(pw * (cropped_rock.get_height() / cropped_rock.get_width()) * 0.5)
+                        
+                        scaled_rock = pygame.transform.smoothscale(cropped_rock, (pw, ph))
+                        
+                        # Apply a dark slate/blue tint to make it stand out from the castle background
+                        darken_surf = pygame.Surface((pw, ph), pygame.SRCALPHA)
+                        darken_surf.fill((100, 110, 130, 255)) # Dark cool-gray tint
+                        scaled_rock.blit(darken_surf, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
+                        
+                        # Store to draw later
+                        self.floating_platforms.append({
+                            'x': start_col * self.tile_width,
+                            'y': row * self.tile_height,
+                            'img': scaled_rock
+                        })
+                    else:
+                        col += 1
+        
         # AI HUD Stats
         self.ai_brain_mode = "MINIMAX"
         self.ai_nodes_evaluated = 0
         self.ai_pruned_branches = 0
         self.ai_thinking_time = 0.0
         self.ai_depth = 3
+        
+        # Accumulators for AI Performance Stats
+        self.total_minimax_nodes = 0
+        self.total_alphabeta_nodes = 0
+        self.total_expectimax_nodes = 0
+        self.total_alphabeta_pruned = 0
+        self.damage_phase1 = 0
+        self.damage_phase2 = 0
+        self.damage_phase3 = 0
         
         # Predictive player target position (for shadow rendering)
         self.pred_player_pos = (self.player.rect.centerx // self.tile_size, self.player.rect.bottom // self.tile_size - 1)
@@ -160,9 +234,7 @@ class BattleLevel6(BattleBase):
                             if getattr(self, 'player_cooldown', 0) == 0:
                                 # Determine player max cooldown based on boss health
                                 if self.boss.health >= 70:
-                                    max_cd = 300 # 5s
-                                elif self.boss.health >= 30:
-                                    max_cd = 180 # 3s
+                                    max_cd = 240 # 4s
                                 else:
                                     max_cd = 120 # 2s
                                     
@@ -176,23 +248,34 @@ class BattleLevel6(BattleBase):
                                     py = self.player.rect.bottom // self.tile_size - 1
                                     bx = self.boss.rect.centerx // self.tile_size
                                     by = self.boss.rect.bottom // self.tile_size - 1
-                                    
-                                    same_height = abs(py - by) <= 1
-                                    is_facing = (self.player.direction == 1 and bx >= px - 1) or \
-                                                (self.player.direction == -1 and bx <= px + 1)
-                                    in_range = abs(px - bx) <= 3
-                                                
-                                    can_fight = same_height and is_facing and in_range
-                                                
+                                    # Tạo vùng hitbox của thanh kiếm (rộng 80, cao 60)
+                                    sword_rect = pygame.Rect(0, 0, 80, 60)
+                                    sword_rect.centery = self.player.rect.centery
+                                    if self.player.direction == 1:
+                                        sword_rect.left = self.player.rect.centerx
+                                    else:
+                                        sword_rect.right = self.player.rect.centerx
+                                        
+                                    can_fight = sword_rect.colliderect(self.boss.rect)
                                     if can_fight:
-                                        # Backstab check
                                         is_back = (px < bx and self.boss.direction > 0) or \
                                                   (px > bx and self.boss.direction < 0)
                                                   
                                         is_shielded = getattr(self.boss, 'shield_active', False) and not is_back
-                                        
+                                        if not is_shielded and not is_back and self.boss.health < 70 and getattr(self.boss, 'shield_cooldown', 1) <= 0:
+                                            self.boss.trigger_shield()
+                                            if px < bx:
+                                                self.boss.direction = -1
+                                                self.boss.flip = True
+                                                self.boss.frame_index = 1 # frame thứ 2
+                                            else:
+                                                self.boss.direction = 1
+                                                self.boss.flip = False
+                                                self.boss.frame_index = 3 # frame thứ 4
+                                            is_shielded = True
+                                            
                                         if self.boss.health < 30: # Phase 3
-                                            dmg = 5 if is_shielded else 20
+                                            dmg = 5 if is_shielded else 15
                                         else: # Phase 1 & 2
                                             dmg = 2 if is_shielded else 10
                                             
@@ -303,6 +386,19 @@ class BattleLevel6(BattleBase):
                         # Boss died! Complete level with victory
                         victory_screen = GameVictoryScreen(self.screen)
                         res = victory_screen.run()
+                        
+                        # Show AI Performance Stats after victory
+                        stats = {
+                            "total_minimax_nodes": self.total_minimax_nodes,
+                            "total_alphabeta_nodes": self.total_alphabeta_nodes,
+                            "total_expectimax_nodes": self.total_expectimax_nodes,
+                            "total_alphabeta_pruned": self.total_alphabeta_pruned,
+                            "damage_phase1": self.damage_phase1,
+                            "damage_phase2": self.damage_phase2,
+                            "damage_phase3": self.damage_phase3
+                        }
+                        AIStatsLevel6Screen(self.screen, stats).run()
+                        
                         if res == "menu": return "win"
                         if res == "quit": return "quit"
                 
@@ -320,6 +416,19 @@ class BattleLevel6(BattleBase):
             if not self.player.alive:
                 self.health_bar.set_health(0)
                 res = GameOverScreen(self.screen).run()
+                
+                # Show AI Performance Stats after game over
+                stats = {
+                    "total_minimax_nodes": self.total_minimax_nodes,
+                    "total_alphabeta_nodes": self.total_alphabeta_nodes,
+                    "total_expectimax_nodes": self.total_expectimax_nodes,
+                    "total_alphabeta_pruned": self.total_alphabeta_pruned,
+                    "damage_phase1": self.damage_phase1,
+                    "damage_phase2": self.damage_phase2,
+                    "damage_phase3": self.damage_phase3
+                }
+                AIStatsLevel6Screen(self.screen, stats).run()
+                
                 return res
 
             self.health_bar.set_health(self.player.health)
@@ -329,7 +438,8 @@ class BattleLevel6(BattleBase):
 
     def update_boss_ai(self):
         now = pygame.time.get_ticks()
-        if now - self.last_ai_update < self.ai_update_interval:
+        current_interval = 150 if self.boss.health < 30 else self.ai_update_interval
+        if now - self.last_ai_update < current_interval:
             return
             
         self.last_ai_update = now
@@ -361,6 +471,7 @@ class BattleLevel6(BattleBase):
                 normal_cooldown=self.boss.normal_cooldown, max_depth=self.ai_depth
             )
             self.ai_nodes_evaluated = eval_nodes
+            self.total_minimax_nodes += eval_nodes
             
             # Log for debugging
             with open("boss_ai_debug.log", "a") as f:
@@ -377,6 +488,8 @@ class BattleLevel6(BattleBase):
             )
             self.ai_nodes_evaluated = eval_nodes
             self.ai_pruned_branches = pruned
+            self.total_alphabeta_nodes += eval_nodes
+            self.total_alphabeta_pruned += pruned
         else:
             # Phase 3: Expectimax
             self.ai_brain_mode = "EXPECTIMAX"
@@ -389,6 +502,7 @@ class BattleLevel6(BattleBase):
                 normal_cooldown=self.boss.normal_cooldown, danger_cols=danger_cols, max_depth=self.ai_depth
             )
             self.ai_nodes_evaluated = eval_nodes
+            self.total_expectimax_nodes += eval_nodes
             
         self.ai_thinking_time = (time.time() - t0) * 1000.0  # in ms
         
@@ -421,13 +535,28 @@ class BattleLevel6(BattleBase):
         for h in self.hazards[:]:
             h.update()
             
+            # Beam damage during warning phase
+            if h.state == "warning" and not getattr(h, 'beam_hit', False):
+                px = self.player.rect.centerx // self.tile_size
+                if px == h.col:
+                    dmg = 10
+                    self.player.health -= dmg
+                    self.damage_phase3 += dmg
+                    self.player.is_hurt = True
+                    self.player.update_action(8)
+                    self.player.frame_index = 0
+                    self.player.check_alive()
+                    h.beam_hit = True
+            
             # Bounding box of falling rock
             if h.state == "falling":
                 rock_rect = pygame.Rect(h.x - h.size // 2, h.y - h.size // 2, h.size, h.size)
                 
                 # Check collision with player
                 if rock_rect.colliderect(self.player.rect):
-                    self.player.health -= 8
+                    dmg = 8
+                    self.player.health -= dmg
+                    self.damage_phase3 += dmg
                     self.player.is_hurt = True
                     self.player.update_action(8)
                     self.player.frame_index = 0
@@ -453,6 +582,10 @@ class BattleLevel6(BattleBase):
         self.screen.fill((0, 0, 0))
         super().draw(self.camera_offset)
         
+        # Draw the custom floating rock platforms
+        for plat in getattr(self, 'floating_platforms', []):
+            self.screen.blit(plat['img'], (plat['x'] - self.camera_offset[0], plat['y'] - self.camera_offset[1]))
+        
         # --- Boss Attack Charging Indicator (Wow Factor 4 replacement) ---
         if self.boss.alive and getattr(self.boss, 'charge_active', False):
             bx = self.boss.rect.centerx
@@ -475,28 +608,7 @@ class BattleLevel6(BattleBase):
             txt_rect = warn_txt.get_rect(center=(bx, self.boss.rect.y - 45))
             self.screen.blit(warn_txt, txt_rect)
             
-        # --- Wow Factor 1: Colored glowing aura under Boss based on active AI phase ---
-        if self.boss.alive:
-            aura_color = (0, 150, 255)  # Blue for Minimax
-            if self.ai_brain_mode == "ALPHA-BETA":
-                aura_color = (0, 255, 100)  # Green for Alpha-Beta
-            elif self.ai_brain_mode == "EXPECTIMAX":
-                aura_color = (200, 0, 255)  # Purple for Expectimax
-                
-            aura_surf = pygame.Surface((120, 30), pygame.SRCALPHA)
-            pygame.draw.ellipse(aura_surf, (*aura_color, 120), (0, 0, 120, 30))
-            aura_x = self.boss.rect.centerx - 60
-            aura_y = self.boss.rect.bottom - 15
-            self.screen.blit(aura_surf, (aura_x, aura_y))
-
-        # --- Wow Factor 2: Draw Predictive Player Target Shadow (Ghost sprite) ---
-        if self.boss.alive and self.player.alive:
-            ghost_x = self.pred_player_pos[0] * self.tile_size
-            ghost_y = (self.pred_player_pos[1] + 1) * self.tile_size - self.player.rect.height
-            ghost_rect = pygame.Rect(ghost_x, ghost_y, self.player.rect.width, self.player.rect.height)
-            pygame.draw.rect(self.screen, (0, 255, 100, 80), ghost_rect, 2, border_radius=3)
-            label = self.font_overlay.render("Pred X", True, (0, 255, 100))
-            self.screen.blit(label, (ghost_rect.x, ghost_rect.y - 15))
+        # --- Wow Factor 1 replaced by Robot Core Color (in BossRobot.draw) ---
 
         # Draw hazards (Falling rocks & warning zones)
         for h in self.hazards:
@@ -521,15 +633,6 @@ class BattleLevel6(BattleBase):
         for sprite in self.enemy_group:
             if sprite.alive or sprite.action == 4:
                 sprite.draw(self.screen, self.camera_offset)
-                # Draw defensive energy barrier bubble if shielding
-                if sprite.alive and getattr(sprite, 'shield_active', False):
-                    barrier_surf = pygame.Surface((120, 120), pygame.SRCALPHA)
-                    pulse = int(100 + 40 * math.sin(pygame.time.get_ticks() / 100.0))
-                    pygame.draw.circle(barrier_surf, (0, 180, 255, pulse // 3), (60, 60), 55)
-                    pygame.draw.circle(barrier_surf, (0, 200, 255, pulse), (60, 60), 55, 3)
-                    bx_px = sprite.rect.centerx - 60 - self.camera_offset[0]
-                    by_px = sprite.rect.centery - 60 - self.camera_offset[1]
-                    self.screen.blit(barrier_surf, (bx_px, by_px))
 
         # Interface Buttons & Health Bars
         self.health_bar.draw(self.screen)
@@ -548,31 +651,9 @@ class BattleLevel6(BattleBase):
             hp_txt = self.font_overlay.render(f"Boss: {self.boss.health} HP", True, (255, 255, 255))
             self.screen.blit(hp_txt, (bx, by - 14))
 
-        # --- Wow Factor 3: AI Stats Panel (Hologram overlay) ---
-        stats_surf = pygame.Surface((220, 110), pygame.SRCALPHA)
-        stats_surf.fill((10, 20, 30, 200))
-        pygame.draw.rect(stats_surf, (0, 150, 255), (0, 0, 220, 110), 1, border_radius=4)
-        
-        mode_color = (0, 150, 255)
-        if self.ai_brain_mode == "ALPHA-BETA": mode_color = (0, 255, 100)
-        elif self.ai_brain_mode == "EXPECTIMAX": mode_color = (200, 0, 255)
-        
-        title_txt = self.font_large.render(f"AI BRAIN: {self.ai_brain_mode}", True, mode_color)
-        depth_txt = self.font_overlay.render(f"Search Depth: {self.ai_depth} steps", True, (255, 255, 255))
-        nodes_txt = self.font_overlay.render(f"Nodes Evaluated: {self.ai_nodes_evaluated}", True, (255, 255, 255))
-        pruned_txt = self.font_overlay.render(f"Branches Pruned: {self.ai_pruned_branches}", True, (255, 255, 255))
-        time_txt = self.font_overlay.render(f"Thinking Time: {self.ai_thinking_time:.2f} ms", True, (255, 255, 255))
-        
-        stats_surf.blit(title_txt, (10, 8))
-        stats_surf.blit(depth_txt, (10, 32))
-        stats_surf.blit(nodes_txt, (10, 50))
-        stats_surf.blit(pruned_txt, (10, 68))
-        stats_surf.blit(time_txt, (10, 86))
-        
-        self.screen.blit(stats_surf, (20, 50))
 
-        # --- Draw Player Skill Cooldown HUD Icon (Below AI Stats Panel HUD) ---
-        skill_center = (50, 205)
+        # --- Draw Player Skill Cooldown HUD Icon (Right of Health Bar) ---
+        skill_center = (200, 30)
         skill_radius = 30
         
         # Blit skill icon
@@ -584,9 +665,7 @@ class BattleLevel6(BattleBase):
         cooldown = getattr(self, 'player_cooldown', 0)
         if cooldown > 0:
             if self.boss.health >= 70:
-                max_cd = 300.0
-            elif self.boss.health >= 30:
-                max_cd = 180.0
+                max_cd = 240.0
             else:
                 max_cd = 120.0
                 

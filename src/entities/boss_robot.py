@@ -41,7 +41,7 @@ class BossRobot(pygame.sprite.Sprite):
             row += 1
             
         self.target_grid_pos = (col, row - 1)
-        self.feet_offset = 12
+        self.feet_offset = 0
         
         aligned_x = col * battle_base.tile_width + battle_base.tile_width // 2 - self.width // 2
         aligned_y = row * battle_base.tile_height - self.height + self.feet_offset
@@ -71,14 +71,14 @@ class BossRobot(pygame.sprite.Sprite):
     @property
     def combo_cooldown(self):
         now = pygame.time.get_ticks()
-        max_cd = 5000 if self.health < 30 else 10000
+        max_cd = 6000 if self.health < 30 else 8000
         elapsed = now - self.last_combo_cooldown_time
         return max(0.0, (max_cd - elapsed) / 1000.0)
 
     @property
     def shield_cooldown(self):
         now = pygame.time.get_ticks()
-        max_cd = 2000 if self.health < 30 else 5000
+        max_cd = 5000 if self.health < 30 else 8000
         elapsed = now - self.last_shield_cooldown_time
         return max(0.0, (max_cd - elapsed) / 1000.0)
 
@@ -97,48 +97,58 @@ class BossRobot(pygame.sprite.Sprite):
         frame_w, frame_h = 567, 560
         start_y = 200
         cols, rows = 5, 2
+        self.animations_by_color = {'blue': [], 'yellow': [], 'red': []}
+        colors = ['blue', 'yellow', 'red']
         
-        sheet_files = {
-            'walk': 'robot_walk.png',
-            'attack': 'robot_attack.png',
-            'defense': 'robot_defense.png'
-        }
-        
-        actions_map = ['walk', 'walk', 'attack', 'defense', 'walk']
-        
-        for act_name in actions_map:
-            temp_list = []
-            filename = sheet_files.get(act_name, 'robot_walk.png')
-            img_path = os.path.join(sprite_dir, filename)
-            
-            if os.path.exists(img_path):
-                sheet = pygame.image.load(img_path).convert_alpha()
-                # Extract 10 frames
-                for row in range(rows):
-                    for col in range(cols):
-                        rect = pygame.Rect(col * frame_w, start_y + row * frame_h, frame_w, frame_h)
-                        frame = sheet.subsurface(rect).copy()
-                        
-                        # Remove transparency check
-                        rgb = surfarray.pixels3d(frame).astype(np.int32)
-                        alpha = surfarray.pixels_alpha(frame)
-                        is_gray = (np.abs(rgb[:, :, 0] - rgb[:, :, 1]) < 8) & (np.abs(rgb[:, :, 1] - rgb[:, :, 2]) < 8)
-                        r = rgb[:, :, 0]
-                        bg_mask = is_gray & (r >= 28) & (r <= 155)
-                        alpha[bg_mask] = 0
-                        
-                        del rgb
-                        del alpha
-                        
-                        scaled_frame = pygame.transform.smoothscale(frame, (int(frame_w * scale), int(frame_h * scale)))
-                        temp_list.append(scaled_frame)
+        for color in colors:
+            if color == 'red':
+                defense_file = 'robot_defense_yellow.png'
             else:
-                for _ in range(10):
-                    surf = pygame.Surface((80, 80))
-                    surf.fill((255, 100, 0))
-                    temp_list.append(surf)
+                defense_file = f'robot_defense_{color}.png'
+                
+            sheet_files = {
+                'walk': f'robot_walk_{color}.png',
+                'attack': f'robot_attack_{color}.png',
+                'defense': defense_file
+            }
             
-            self.animation_list.append(temp_list)
+            actions_map = ['walk', 'walk', 'attack', 'defense', 'walk']
+            
+            for act_name in actions_map:
+                temp_list = []
+                filename = sheet_files.get(act_name, f'robot_walk_{color}.png')
+                img_path = os.path.join(sprite_dir, filename)
+                
+                if os.path.exists(img_path):
+                    sheet = pygame.image.load(img_path).convert_alpha()
+                    current_frame_w = sheet.get_width() // cols
+                    for row in range(rows):
+                        for col in range(cols):
+                            clip_w = current_frame_w - 35
+                            rect = pygame.Rect(col * current_frame_w, start_y + row * frame_h, clip_w, frame_h)
+                            frame = sheet.subsurface(rect).copy()
+                            
+                            rgb = surfarray.pixels3d(frame).astype(np.int32)
+                            alpha = surfarray.pixels_alpha(frame)
+                            is_gray = (np.abs(rgb[:, :, 0] - rgb[:, :, 1]) < 8) & (np.abs(rgb[:, :, 1] - rgb[:, :, 2]) < 8)
+                            r = rgb[:, :, 0]
+                            bg_mask = is_gray & (r >= 28) & (r <= 155)
+                            alpha[bg_mask] = 0
+                            
+                            del rgb
+                            del alpha
+                            
+                            scaled_frame = pygame.transform.smoothscale(frame, (int(frame_w * scale), int(frame_h * scale)))
+                            temp_list.append(scaled_frame)
+                else:
+                    for _ in range(10):
+                        surf = pygame.Surface((80, 80))
+                        surf.fill((255, 100, 0))
+                        temp_list.append(surf)
+                
+                self.animations_by_color[color].append(temp_list)
+                
+        self.animation_list = self.animations_by_color['blue']
 
     def update_action(self, new_action):
         if not self.alive:
@@ -149,10 +159,22 @@ class BossRobot(pygame.sprite.Sprite):
             self.update_time = pygame.time.get_ticks()
 
     def update_animation(self):
+        # Update animation list based on current phase
+        if self.health >= 70:
+            self.animation_list = self.animations_by_color['blue']
+        elif self.health >= 30:
+            self.animation_list = self.animations_by_color['yellow']
+        else:
+            self.animation_list = self.animations_by_color['red']
+            
         ANIMATION_COOLDOWN = 100
         self.image = self.animation_list[self.action][self.frame_index]
         if pygame.time.get_ticks() - self.update_time > ANIMATION_COOLDOWN:
             self.update_time = pygame.time.get_ticks()
+            # Freeze animation for Shield Block
+            if self.action == 3:
+                return
+            
             self.frame_index += 1
             if self.frame_index >= len(self.animation_list[self.action]):
                 if self.action == 4: # death
@@ -199,7 +221,8 @@ class BossRobot(pygame.sprite.Sprite):
         self.charge_active = True
         self.charge_start_time = now
         self.last_normal_cooldown_time = now
-        self.update_action(0)
+        self.normal_hit_done = 0
+        self.update_action(2)
 
     def update_states(self, player):
         if not self.alive: return
@@ -207,14 +230,23 @@ class BossRobot(pygame.sprite.Sprite):
         
         # 1. Normal Attack charge
         if self.charge_active:
-            charge_duration = 500 if self.health < 30 else 1000
-            if current_time - self.charge_start_time >= charge_duration:
+            charge_duration = 1000 if self.health < 30 else 1500
+            elapsed = current_time - self.charge_start_time
+            if elapsed >= charge_duration:
                 self.charge_active = False
-                self.perform_normal_attack(player)
+                if self.action == 2:
+                    self.update_action(0)
             else:
-                self.update_action(0)
-                return
-                
+                self.update_action(2)
+                # Hold the hammer raised (frame 4) during charge
+                if elapsed < charge_duration - 500:
+                    if self.frame_index > 4:
+                        self.frame_index = 4
+                else:
+                    # Strike once!
+                    if getattr(self, 'normal_hit_done', 0) == 0:
+                        self.perform_normal_attack(player)
+                        self.normal_hit_done = 1
         # 2. Shield Block
         if self.shield_active:
             shield_duration = 1500
@@ -226,9 +258,9 @@ class BossRobot(pygame.sprite.Sprite):
                 self.update_action(3)
                 return
                 
-        # 3. Combo Attack
+        # 3. Combo Attack (Continuous chasing strikes)
         if self.combo_active:
-            combo_duration = 1500
+            combo_duration = 2000
             elapsed = current_time - self.combo_start_time
             if elapsed >= combo_duration:
                 self.combo_active = False
@@ -236,7 +268,13 @@ class BossRobot(pygame.sprite.Sprite):
                     self.update_action(0)
             else:
                 self.update_action(2)
-                expected_hits = int(elapsed // 300) + 1
+                # Vừa đập vừa rượt theo player (Chase player while striking)
+                px = player.rect.centerx // self.battle_base.tile_width
+                py = player.rect.bottom // self.battle_base.tile_height - 1
+                self.set_target_grid_pos(px, py)
+                
+                # Đánh liên tục mỗi 400ms
+                expected_hits = int(elapsed // 400) + 1
                 expected_hits = min(expected_hits, 5)
                 if expected_hits > self.combo_hits_done:
                     self.perform_combo_hit(player)
@@ -258,14 +296,17 @@ class BossRobot(pygame.sprite.Sprite):
         if can_fight and AdversarialSearch.is_in_range((bx, by), (px, py)):
             if current_time - getattr(player, 'last_hurt_time', 0) > 500:
                 if player.action == 4: # Knight Block
-                    player.health -= 3
+                    dmg = 3
                 else:
-                    player.health -= 15
+                    dmg = 15
+                player.health -= dmg
+                if self.health >= 70: self.battle_base.damage_phase1 += dmg
+                elif self.health >= 30: self.battle_base.damage_phase2 += dmg
+                else: self.battle_base.damage_phase3 += dmg
                 player.is_hurt = True
                 player.update_action(8)
                 player.last_hurt_time = current_time
                 player.check_alive()
-        self.update_action(2)
 
     def perform_combo_hit(self, player):
         current_time = pygame.time.get_ticks()
@@ -282,9 +323,13 @@ class BossRobot(pygame.sprite.Sprite):
                     
         if can_fight and AdversarialSearch.is_in_range((bx, by), (px, py)):
             if player.action == 4:
-                player.health -= 3
+                dmg = 3
             else:
-                player.health -= 10
+                dmg = 10
+            player.health -= dmg
+            if self.health >= 70: self.battle_base.damage_phase1 += dmg
+            elif self.health >= 30: self.battle_base.damage_phase2 += dmg
+            else: self.battle_base.damage_phase3 += dmg
             player.is_hurt = True
             player.update_action(8)
             player.last_hurt_time = current_time
@@ -298,7 +343,7 @@ class BossRobot(pygame.sprite.Sprite):
         if not self.alive: return
         
         if self.health < 30:
-            self.speed = self.original_speed * 1.6
+            self.speed = self.original_speed * 2.0
         else:
             self.speed = self.original_speed
             
@@ -338,4 +383,11 @@ class BossRobot(pygame.sprite.Sprite):
 
     def draw(self, surface, offset=(0, 0)):
         img = pygame.transform.flip(self.image, self.flip, False)
-        surface.blit(img, (self.rect.x - offset[0], self.rect.y - offset[1]))
+        
+        draw_y = self.rect.y - offset[1]
+        # Lift up the boss during the attack animation to prevent the feet/hammer from sinking
+        if self.action == 2:
+            draw_y -= 18
+            
+        surface.blit(img, (self.rect.x - offset[0], draw_y))
+

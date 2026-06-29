@@ -107,6 +107,8 @@ class BattleLevel5(BattleBase):
                 self.dragon_count += 1
                 boss = Dragon(x, y, scale=0.6, speed=2, battle_base=self, algo_name=algo)
                 self.boss_list.append(boss)
+                if not hasattr(self, 'all_dragons'): self.all_dragons = []
+                self.all_dragons.append(boss)
 
         if not self.player:
             raise ValueError("Không tìm thấy object 'knight' trong map!")
@@ -252,25 +254,47 @@ class BattleLevel5(BattleBase):
                 self.update_enemy_paths()
 
                 # Check Win
-                if self.door_pos:
+                if getattr(self, 'door_pos', None):
                     # Tạo hitbox nhỏ gọn ngay giữa tâm cổng để người chơi phải vào hẳn bên trong
                     hitbox_x = self.door_pos[0] + 32
                     hitbox_y = self.door_pos[1] + 16
                     door_rect = pygame.Rect(hitbox_x, hitbox_y, 32, 32)
                     if self.player.rect.colliderect(door_rect):
                         res = GameVictoryScreen(self.screen).run()
+                        self.show_ai_stats()
                         if res == "menu": return "win"
                         if res == "quit": return "quit"
 
             if not self.player.alive:
                 self.health_bar.set_health(0)
                 res = GameOverScreen(self.screen).run()
+                self.show_ai_stats()
                 return res
 
             self.health_bar.set_health(self.player.health)
             self.draw()
             pygame.display.flip()
             clock.tick(60)
+
+    def show_ai_stats(self):
+        from src.ui.ai_stats_level5 import AIStatsLevel5Screen
+        stats = {}
+        if hasattr(self, 'all_dragons'):
+            for boss in self.all_dragons:
+                avg_time = boss.total_time_ms / boss.call_count if boss.call_count > 0 else 0
+                if boss.algo_name == "Backtracking":
+                    stats["bt_iterations"] = boss.total_iterations
+                    stats["bt_time_ms"] = avg_time
+                    stats["bt_damage"] = boss.total_damage
+                elif boss.algo_name == "AC-3":
+                    stats["ac3_iterations"] = boss.total_iterations
+                    stats["ac3_time_ms"] = avg_time
+                    stats["ac3_damage"] = boss.total_damage
+                elif boss.algo_name == "Min-Conflicts":
+                    stats["mc_iterations"] = boss.total_iterations
+                    stats["mc_time_ms"] = avg_time
+                    stats["mc_damage"] = boss.total_damage
+        AIStatsLevel5Screen(self.screen, stats).run()
 
     def is_ladder(self, px, py):
         # Kiểm tra xem ô (px, py) có chạm vào ladder object không
@@ -284,7 +308,7 @@ class BattleLevel5(BattleBase):
     def is_walkable(self, x, y):
         if x < 0 or x >= self.map_width or y < 0 or y >= self.map_height:
             return False
-        # Nếu là khí và không có thang thì phải kiểm tra xem bên dưới có sàn không hoặc là thang
+        # Nếu là khí và không có thang thì phải kiểm tra xem bên dưới có sàn không
         if self.grid[y][x] == 0 and not self.is_ladder(x, y):
             if y + 1 < self.map_height:
                 if self.grid[y+1][x] > 0 or self.is_ladder(x, y+1):
@@ -338,21 +362,37 @@ class BattleLevel5(BattleBase):
         csp = CSPSurround(self.map_width, self.map_height, self.grid, self.is_walkable)
         
         target_positions = []
-        bt_targets = csp.solve_backtracking((target_x, target_y), boss_positions)
-        ac3_targets = csp.solve_ac3((target_x, target_y), boss_positions)
-        mc_targets = csp.solve_min_conflicts((target_x, target_y), boss_positions)
+        bt_targets, bt_time, bt_iters = csp.solve_backtracking((target_x, target_y), boss_positions)
+        ac3_targets, ac3_time, ac3_iters = csp.solve_ac3((target_x, target_y), boss_positions)
+        mc_targets, mc_time, mc_iters = csp.solve_min_conflicts((target_x, target_y), boss_positions)
         
+        csp_domain = csp.get_valid_neighbors(target_x, target_y)
+        if len(csp_domain) < len(active_bosses):
+            csp_domain.append((target_x, target_y))
+            
         claimed_targets = set()
         for i, boss in enumerate(active_bosses):
+            boss.call_count += 1
             if boss.algo_name == "Backtracking":
                 target = bt_targets[i] if i < len(bt_targets) else boss_positions[i]
+                boss.total_time_ms += bt_time
+                boss.total_iterations += bt_iters
             elif boss.algo_name == "AC-3":
                 target = ac3_targets[i] if i < len(ac3_targets) else boss_positions[i]
+                boss.total_time_ms += ac3_time
+                boss.total_iterations += ac3_iters
             else: # Min-Conflicts
                 target = mc_targets[i] if i < len(mc_targets) else boss_positions[i]
+                boss.total_time_ms += mc_time
+                boss.total_iterations += mc_iters
                 
             if target in claimed_targets:
-                target = boss_positions[i]
+                # Nếu bị trùng do các thuật toán chọn khác nhau, tìm ô trống gần boss nhất
+                unclaimed = [t for t in csp_domain if t not in claimed_targets]
+                if unclaimed:
+                    target = min(unclaimed, key=lambda t: abs(t[0] - boss_positions[i][0]) + abs(t[1] - boss_positions[i][1]))
+                else:
+                    target = boss_positions[i]
             claimed_targets.add(target)
             target_positions.append(target)
             
@@ -397,7 +437,7 @@ class BattleLevel5(BattleBase):
                         path_found = path
                         break
                         
-                    if len(path) > 400:
+                    if len(path) > 800:
                         continue
                         
                     for nx, ny in self.get_neighbors(cx, cy):
@@ -521,8 +561,8 @@ class BattleLevel5(BattleBase):
             self.is_trapped = not escaped
 
         # Nếu bị chặn hoàn toàn đường tới đích -> bị bao vây -> mất máu
-        if self.is_trapped:
-            if current_time - self.last_trapped_damage_time >= self.TRAP_DAMAGE_INTERVAL:
+        if getattr(self, 'is_trapped', False):
+            if current_time - getattr(self, 'last_trapped_damage_time', 0) >= getattr(self, 'TRAP_DAMAGE_INTERVAL', 1000):
                 self.player.health -= 10
                 self.player.is_hurt = True
                 self.player.update_action(8)
