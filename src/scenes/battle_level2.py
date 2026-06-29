@@ -189,13 +189,14 @@ class BattleLevel2(BattleBase):
                 door_rect = pygame.Rect(self.door_pos[0] - 50, self.door_pos[1] - 50, 100, 100)
                 # Check collision using player's world coordinates (self.player.rect)
                 if self.logic_manager.check_victory(self.player.rect, door_rect):
+                    victory_screen = GameVictoryScreen(self.screen)
+                    result = victory_screen.run()
+
                     from src.ui.ai_dashboard import AIDashboard
                     from src.components.ai_stats_tracker import AIStatsTracker
                     dashboard = AIDashboard(self.screen, AIStatsTracker.get_stats(), "Level 2")
                     dashboard.run()
 
-                    victory_screen = GameVictoryScreen(self.screen)
-                    result = victory_screen.run()
                     if result == "menu":
                         return "win"  # báo rõ là đã thắng, không phải chỉ về menu
                     elif result == "quit":
@@ -372,13 +373,14 @@ class BattleLevel2(BattleBase):
                 self.player_health = 0
                 self.health_bar.set_health(self.player_health)
                 
+                game_over_screen = GameOverScreen(self.screen)
+                result = game_over_screen.run()
+
                 from src.ui.ai_dashboard import AIDashboard
                 from src.components.ai_stats_tracker import AIStatsTracker
                 dashboard = AIDashboard(self.screen, AIStatsTracker.get_stats(), "Level 2")
                 dashboard.run()
 
-                game_over_screen = GameOverScreen(self.screen)
-                result = game_over_screen.run()
                 if result == "restart":
                     return "restart"
                 elif result == "menu":

@@ -196,13 +196,14 @@ class BattleLevel4(BattleBase):
             if self.door_pos:
                 door_rect = pygame.Rect(self.door_pos[0], self.door_pos[1] - 64, 64, 64)
                 if self.logic_manager.is_door_unlocked() and self.logic_manager.check_victory(self.player.rect, door_rect):
+                    victory_screen = GameVictoryScreen(self.screen)
+                    result = victory_screen.run()
+
                     from src.ui.ai_dashboard import AIDashboard
                     from src.components.ai_stats_tracker import AIStatsTracker
                     dashboard = AIDashboard(self.screen, AIStatsTracker.get_stats())
                     dashboard.run()
-                    
-                    victory_screen = GameVictoryScreen(self.screen)
-                    result = victory_screen.run()
+
                     if result == "menu":
                         return "win"
                     elif result == "quit":
@@ -361,13 +362,14 @@ class BattleLevel4(BattleBase):
                 self.player_health = 0
                 self.health_bar.set_health(self.player_health)
                 
+                game_over_screen = GameOverScreen(self.screen)
+                result = game_over_screen.run()
+
                 from src.ui.ai_dashboard import AIDashboard
                 from src.components.ai_stats_tracker import AIStatsTracker
                 dashboard = AIDashboard(self.screen, AIStatsTracker.get_stats())
                 dashboard.run()
                 
-                game_over_screen = GameOverScreen(self.screen)
-                result = game_over_screen.run()
                 if result == "restart":
                     return "restart"
                 elif result == "menu":

@@ -165,13 +165,14 @@ class BattleLevel1(BattleBase):
                 door_rect = pygame.Rect(self.door_pos[0], self.door_pos[1] - 64, 64, 64)
                 player_rect = self.player.rect.move(-self.camera_offset[0], -self.camera_offset[1])
                 if self.logic_manager.check_victory(player_rect, door_rect):
+                    victory_screen = GameVictoryScreen(self.screen)
+                    result = victory_screen.run()
+
                     from src.ui.ai_dashboard import AIDashboard
                     from src.components.ai_stats_tracker import AIStatsTracker
                     dashboard = AIDashboard(self.screen, AIStatsTracker.get_stats(), "Level 1")
                     dashboard.run()
 
-                    victory_screen = GameVictoryScreen(self.screen)
-                    result = victory_screen.run()
                     if result == "menu":
                         return "win"  # báo rõ là đã thắng, không phải chỉ về menu
                     elif result == "quit":
@@ -350,13 +351,14 @@ class BattleLevel1(BattleBase):
                 self.player_health = 0
                 self.health_bar.set_health(self.player_health)
                 
+                game_over_screen = GameOverScreen(self.screen)
+                result = game_over_screen.run()
+
                 from src.ui.ai_dashboard import AIDashboard
                 from src.components.ai_stats_tracker import AIStatsTracker
                 dashboard = AIDashboard(self.screen, AIStatsTracker.get_stats(), "Level 1")
                 dashboard.run()
 
-                game_over_screen = GameOverScreen(self.screen)
-                result = game_over_screen.run()
                 if result == "restart":
                     return "restart"
                 elif result == "menu":
