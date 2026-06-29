@@ -458,7 +458,6 @@ class BattleLevel6(BattleBase):
         # Select algorithm phase based on health
         t0 = time.time()
         danger_cols = [h.col for h in self.hazards if h.state == "warning" or h.state == "falling"]
-        
         if self.boss.health >= 70:
             # Phase 1: Minimax
             self.ai_brain_mode = "MINIMAX"
@@ -472,10 +471,6 @@ class BattleLevel6(BattleBase):
             )
             self.ai_nodes_evaluated = eval_nodes
             self.total_minimax_nodes += eval_nodes
-            
-            # Log for debugging
-            with open("boss_ai_debug.log", "a") as f:
-                f.write(f"MINIMAX: Boss={(bx, by)}, Player={(px, py)}, Choice={best_act}\n")
         elif self.boss.health >= 30:
             # Phase 2: Alpha-Beta
             self.ai_brain_mode = "ALPHA-BETA"
