@@ -53,40 +53,7 @@ class BattleLevel5(BattleBase):
         self.music_manager.play_music(music_path)
 
         BGDoor_dir = os.path.join(project_root, 'assets', 'backgrounds')
-        
-        # Tự động sao chép file ảnh cổng dịch chuyển màn 5 thứ nhất và xử lý giảm độ sáng (đỡ chói)
         target_path = os.path.join(BGDoor_dir, "level5_door_processed_dim.png")
-        if not os.path.exists(target_path):
-            try:
-                import shutil
-                src_path = r"C:\Users\LENOVO\.gemini\antigravity-ide\brain\f8e2b72c-6f12-4f5e-95fb-1d925255e389\level5_door_raw_1782720501078.png"
-                if os.path.exists(src_path):
-                    print("[System] Đang xử lý tách nền và giảm độ sáng (giảm chói) cho cổng màn 5...")
-                    raw_surf = pygame.image.load(src_path).convert_alpha()
-                    width, height = raw_surf.get_size()
-                    
-                    # Tạo surface mới chứa kênh alpha
-                    processed_surf = pygame.Surface((width, height), pygame.SRCALPHA)
-                    processed_surf.blit(raw_surf, (0, 0))
-                    
-                    # Quét pixel để chuyển nền đen thành trong suốt và giảm độ sáng đi 55% (nhân 0.45)
-                    for px in range(width):
-                        for py in range(height):
-                            r, g, b, a = processed_surf.get_at((px, py))
-                            if r < 35 and g < 35 and b < 35:
-                                processed_surf.set_at((px, py), (0, 0, 0, 0))
-                            else:
-                                # Nhân 0.45 để giảm độ sáng, giúp màu sắc dịu và mờ ảo hơn
-                                new_r = int(r * 0.45)
-                                new_g = int(g * 0.45)
-                                new_b = int(b * 0.45)
-                                processed_surf.set_at((px, py), (new_r, new_g, new_b, a))
-                                
-                    # Lưu lại file đã xử lý
-                    pygame.image.save(processed_surf, target_path)
-                    print("[System] Đã lưu cổng dịch chuyển giảm chói thành công!")
-            except Exception as e:
-                print(f"[Warning] Lỗi xử lý ảnh cổng: {e}")
 
         if os.path.exists(target_path):
             self.BGDoor = pygame.image.load(target_path).convert_alpha()
