@@ -2,7 +2,7 @@ import pygame
 import os
 
 class MusicManager:
-    is_muted = False  # Lưu trạng thái tắt nhạc toàn cục (persist qua các màn chơi)
+    is_muted = False  # Lưu trạng thái tắt nhạc toàn cục
 
     def __init__(self):
         pygame.mixer.init()

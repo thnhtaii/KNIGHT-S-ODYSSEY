@@ -375,7 +375,7 @@ class BattleLevel3(BattleBase):
                 draw_y = sprite.rect.y - self.camera_offset[1]
                 self.screen.blit(pygame.transform.flip(sprite.image, sprite.flip, False), (draw_x, draw_y))
                 
-                # Hiển thị tên thuật toán viết hoa nổi sát trên đầu mỗi binh sĩ (bao gồm số thứ tự để đối chiếu bảng hiệu suất)
+                # Hiển thị tên và số thứ tự của binh sĩ
                 if sprite.alive:
                     font = pygame.font.SysFont("Arial", 10, bold=True)
                     display_name = sprite.name.upper()

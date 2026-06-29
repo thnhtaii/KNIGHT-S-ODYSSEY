@@ -54,7 +54,7 @@ class AIDashboard:
             headers = ["Ice Wolf (Thuat toan)", "Do dai duong (o)", "Thoi gian (ms)", "Sat thuong"]
             col_widths = [260, 150, 130, 100]
         else:
-            # Tự động điều chỉnh tiêu đề cột dựa trên loại kẻ địch (Zombie ở màn 4, Binh si ở màn 3)
+            # Tự động điều chỉnh tiêu đề cột theo loại quái
             enemy_type = "Binh si"
             if self.stats:
                 first_key = next(iter(self.stats.keys()))

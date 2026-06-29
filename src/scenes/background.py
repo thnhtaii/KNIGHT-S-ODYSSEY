@@ -56,9 +56,9 @@ class Background:
             self.text_font = pygame.font.Font(None, text_size)
 
     def update_button_image(self):
-        size = (110, 36) if self.button_pressed else (130, 44)
+        size = (90, 30) if self.button_pressed else (110, 38)
         self.start_button_image = pygame.transform.scale(self.original_button_image, size)
-        self.start_button_rect = self.start_button_image.get_rect(center=(self.WINDOW_WIDTH // 2 + 80, self.WINDOW_HEIGHT - 80))
+        self.start_button_rect = self.start_button_image.get_rect(center=(self.WINDOW_WIDTH // 2 , self.WINDOW_HEIGHT - 100))
 
     def draw_background(self):
         self.screen.blit(self.bg_image, (0, 0))
