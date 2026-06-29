@@ -375,11 +375,11 @@ class BattleLevel3(BattleBase):
                 draw_y = sprite.rect.y - self.camera_offset[1]
                 self.screen.blit(pygame.transform.flip(sprite.image, sprite.flip, False), (draw_x, draw_y))
                 
-                # Hiển thị tên thuật toán viết hoa nổi sát trên đầu mỗi binh sĩ
+                # Hiển thị tên thuật toán viết hoa nổi sát trên đầu mỗi binh sĩ (bao gồm số thứ tự để đối chiếu bảng hiệu suất)
                 if sprite.alive:
                     font = pygame.font.SysFont("Arial", 10, bold=True)
-                    algo_name = sprite.algo.replace("_", " ").upper()
-                    text_surface = font.render(algo_name, True, (255, 255, 255))
+                    display_name = sprite.name.upper()
+                    text_surface = font.render(display_name, True, (255, 255, 255))
                     text_surface.set_alpha(150)
                     # Binh sĩ tỉ lệ 0.5 (75x75px) có khoảng không trong suốt phía trên, draw_y + 15 sẽ đặt chữ sát trên đầu lính
                     text_rect = text_surface.get_rect(center=(draw_x + sprite.rect.width // 2, draw_y + 15))
