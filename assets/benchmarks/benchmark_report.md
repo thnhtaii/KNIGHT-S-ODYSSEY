@@ -1,5 +1,5 @@
 # BÁO CÁO ĐÁNH GIÁ HIỆU SUẤT THUẬT TOÁN AI THEO TỪNG LEVEL
-## Dự án: Stickyman-Battle
+## Dự án: Knight's Odyssey
 
 Báo cáo này trình bày kết quả đo lường, đánh giá và so sánh hiệu năng thực tế của các giải thuật Trí tuệ Nhân tạo (AI) được triển khai riêng biệt cho từng Level từ 1 đến 6.
 
@@ -84,3 +84,41 @@ Trong Màn 6, Boss ra quyết định đối kháng trực tiếp với người
 * **Minimax (Độ sâu 3):** Duyệt qua toàn bộ 100% cây quyết định quyết định ở độ sâu 3. Thời gian chạy cao và số nút duyệt lớn (do không có cắt tỉa).
 * **Alpha-Beta Pruning (Độ sâu 3):** Cho ra quyết định **tối ưu hoàn toàn giống Minimax** nhưng **cắt tỉa bỏ từ 50% đến 70% số lượng nút không cần thiết**. Thời gian phản xạ cực kỳ nhanh (dưới 1ms).
 * **Expectimax (Độ sâu 3):** Tính toán giá trị trung bình có trọng số (kỳ vọng) tại các nút cơ hội để đối phó với lối đánh ngẫu nhiên của người chơi.
+
+---
+
+### 7. TỔNG QUAN: So sánh toàn diện hiệu suất của 6 nhóm thuật toán (Level 1 - 6)
+Biểu đồ này so sánh trực tiếp thời gian thực thi trung bình (ms) của cả 6 nhóm thuật toán AI đại diện cho 6 Màn chơi trong game trên cùng một hệ quy chiếu. Do sự chênh lệch thời gian giữa nhóm tìm đường đơn giản (<0.5ms) và nhóm đối kháng nặng (hàng chục ms) là quá lớn, biểu đồ sử dụng **thang đo Logarit (Logarithmic scale)** cho trục Y để có thể biểu diễn trực quan tất cả các nhóm trên cùng một đồ thị.
+
+#### Biểu đồ so sánh:
+![So sánh tổng quan 6 nhóm thuật toán](comparison_groups_overall.png)
+
+#### Phân tích kết quả tổng quan:
+* **Nhóm 1 & 2 (Tìm đường Uninformed & Informed):** Có tốc độ xử lý nhanh nhất (thường dưới 0.5ms). Việc áp dụng Heuristic (như A* hay Greedy) giúp giảm số nút duyệt, nhưng nhìn chung cả hai nhóm này đều có độ phức tạp thấp vì chỉ tìm đường cho một tác nhân duy nhất trên bản đồ tĩnh.
+* **Nhóm 3 (Tìm kiếm cục bộ - Local Search):** Thời gian chạy rất nhanh. Hill Climbing và Simulated Annealing đưa ra quyết định di chuyển dựa trên các trạng thái lân cận trực tiếp nên chi phí tính toán cực nhỏ.
+* **Nhóm 4 (Môi trường bất định - Uncertainty):** Thời gian xử lý tăng lên rõ rệt (hàng mili-giây) do không gian trạng thái phình to thành "tập hợp các trạng thái khả thi" (Belief States) và phải tính toán cây And-Or phức tạp hơn.
+* **Nhóm 5 (Thỏa mãn ràng buộc - CSP):** Xử lý bài toán gán mục tiêu không trùng lặp cho nhiều rồng cùng lúc. Thời gian chạy ở mức trung bình, trong đó AC-3 giúp lọc trước miền giá trị để giảm số lần quay lui hiệu quả.
+* **Nhóm 6 (Tìm kiếm đối kháng - Adversarial):** **Nặng nhất và tốn thời gian nhất (vượt trội hơn hẳn các nhóm khác).** Minimax và Expectimax phải giả lập tất cả các nước đi tương lai của cả Boss lẫn người chơi theo cấu trúc cây trò chơi, dẫn đến số lượng nút duyệt khổng lồ. Việc áp dụng cắt tỉa Alpha-Beta là bắt buộc để giữ cho thời gian phản xạ của Boss nằm trong ngưỡng chấp nhận được của game thời gian thực.
+
+---
+
+### 8. Ý kiến và đánh giá của nhóm về việc áp dụng 6 nhóm thuật toán
+Dựa trên yêu cầu thiết kế đồ án và kết quả thực nghiệm, nhóm tác giả đưa ra các đánh giá chuyên môn về tính hợp lý và hiệu quả của việc áp dụng 6 nhóm thuật toán AI để giải quyết các bài toán trong game như sau:
+
+#### a) Về bài toán tìm đường đi (Pathfinding - Áp dụng Nhóm 1 & Nhóm 2)
+* **Ý kiến đánh giá:** Việc lựa chọn thuật toán **A\*** (Nhóm 2) làm giải thuật di chuyển chủ đạo cho quái vật đuổi theo người chơi là hoàn toàn tối ưu và chuẩn xác. So với **BFS/DFS/UCS** (Nhóm 1), A* tiết kiệm tài nguyên CPU đáng kể cho game thời gian thực nhờ hàm heuristic định hướng (Manhattan), tránh hiện tượng giật lag khi có nhiều quái vật cùng di chuyển. **Greedy BFS** tuy nhanh nhưng dễ bị kẹt trước các tường chắn phức tạp của bản đồ TMX, vì vậy nhóm đánh giá A* là sự cân bằng hoàn hảo nhất giữa hiệu năng tính toán và tính tối ưu của đường đi.
+
+#### b) Về bài toán di chuyển theo bản năng (Local Search - Áp dụng Nhóm 3)
+* **Ý kiến đánh giá:** Phương án áp dụng **Local Search** (Hill Climbing, Simulated Annealing, Local Beam) cho binh sĩ ở Màn 3 là một hướng tiếp cận thông minh. Thay vì phải tính trước một đường đi dài và phức tạp (tốn CPU), quái vật chỉ cần đưa ra quyết định di chuyển từng bước dựa trên phân tích lân cận trực tiếp. 
+* Đặc biệt, **Simulated Annealing** và **Local Beam Search** thể hiện tính ứng dụng thực tiễn rất cao vì chúng giúp quái vật vượt qua các chướng ngại vật dạng ngõ cụt (Local Optima) - điểm yếu chí mạng của thuật toán leo đồi truyền thống - mà vẫn duy trì tốc độ xử lý tức thì.
+
+#### c) Về bài toán tìm kiếm trong sương mù (Search Under Uncertainty - Áp dụng Nhóm 4)
+* **Ý kiến đánh giá:** Việc xây dựng trạng thái niềm tin (**Belief State**) và hướng đến **Belief Goal** giải quyết xuất sắc bài toán tìm kiếm thiếu thông tin khi Zombie mất dấu người chơi. Thay vì cho quái vật đi lang thang ngẫu nhiên một cách phi thực tế, việc cập nhật tập hợp các vị trí nghi ngờ giúp Zombie chủ động lục soát các khu vực có khả năng chứa người chơi cao nhất. Nhóm đánh giá đây là điểm sáng về mặt thiết kế gameplay, tạo ra cảm giác hồi hộp và tính chiến thuật cao cho người chơi.
+
+#### d) Về bài toán thỏa mãn ràng buộc (Constraint Satisfaction - Áp dụng Nhóm 5)
+* **Ý kiến đánh giá:** Mô hình hóa hành vi phối hợp bao vây người chơi của bầy rồng thành bài toán **CSP** là giải pháp cực kỳ khoa học và sáng tạo. Ràng buộc **AllDiff** giải quyết triệt để vấn đề "trùng lặp mục tiêu" (các quái vật không tranh giành hay dẫm chân lên cùng một vị trí). 
+* Thực nghiệm cho thấy, việc tích hợp bộ lọc **AC-3** trước khi chạy Backtracking giúp giảm thiểu số vòng lặp thử-sai (iterations), từ đó giúp bầy rồng phân chia vị trí bao vây người chơi một cách trật tự, nhanh chóng và mượt mà trong thời gian thực.
+
+#### e) Về bài toán ra quyết định đối kháng (Adversarial Decision Making - Áp dụng Nhóm 6)
+* **Ý kiến đánh giá:** Áp dụng **Minimax, Alpha-Beta và Expectimax** cho Boss Robot ở màn chơi cuối là lựa chọn tối ưu nhất để xây dựng một AI thông minh và thử thách. Nhờ khả năng dự đoán nước đi của người chơi, Boss đưa ra các quyết định tấn công/phòng thủ rất hợp lý và nhạy bén.
+* Tuy nhiên, do Minimax duyệt cây rất nặng, việc áp dụng **Cắt tỉa Alpha-Beta** là yếu tố sống còn để giảm số nút duyệt (tiết kiệm đến 70% thời gian xử lý), giữ cho khung hình của game ổn định ở mức 60 FPS. Expectimax giúp Boss thích ứng tốt khi người chơi thay đổi lối đánh ngẫu nhiên, hoàn thiện một AI Boss có độ khó cao và thực tế.

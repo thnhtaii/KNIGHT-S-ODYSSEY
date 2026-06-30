@@ -139,7 +139,7 @@ python main.py
 ##  Cấu trúc thư mục
 
 ```
-Stickyman-Battle/
+Knights-Odyssey/
 ├── main.py                  # File chạy chính (entry point)
 ├── README.md                # Tệp hướng dẫn này
 ├── assets/                  # Tài nguyên game
