@@ -447,9 +447,8 @@ Biểu đồ này so sánh trực tiếp thời gian thực thi trung bình (ms)
 
 ##  Tài liệu tham khảo
 
-- [KNIGHT-S-ODYSSEY — GitHub](https://github.com/thnhtaii/KNIGHT-S-ODYSSEY)
-- [StickMan Game Development Series — YouTube Playlist](https://www.youtube.com/playlist?list=PLjcN1EyupaQm20hlUE11y9y8EY2aXLpnv)
-- Russell, S., & Norvig, P. — *Artificial Intelligence: A Modern Approach*
+1.	Nguyenhuytlu. (n.d.). StickMan_Game [Source code]. GitHub. https://github.com/nguyenhuytlu/StickMan_Game
+2.	YouTube (n.d.). [Playlist title] [YouTube playlist]. Retrieved May 13, 2025, from https://youtube.com/playlist?list=PLjcN1EyupaQm20hlUE11y9y8EY2aXLpnv
 
 ---
 
